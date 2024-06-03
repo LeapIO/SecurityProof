@@ -5,7 +5,7 @@ Require Import Coq.Sets.Finite_sets_facts.
 Require Import Coq.Sets.Powerset_facts.
 Require Import Coq.Logic.Classical.
 Require Import Coq.Logic.Classical_Prop.
-Require Import Coq.Arith.EqNat.
+Require Import Coq.Arith.PeanoNat.
 
 Inductive difficulty : Type := Hard | Easy.
 Inductive strength : Type := Strong | Weak.
@@ -103,31 +103,9 @@ Proof.
     auto.
 Qed.
 
-(*
-Axiom incEasyGuess: forall t h l, (Guess l t <> Hard) -> (Guess (Add text l h) t <> Hard).
-Lemma subsetHardGuess: forall l sl t, Finite text l -> Finite text sl ->
-  (Guess l t = Hard) /\ (Included text sl l) -> (Guess sl t = Hard).
-Proof.
-  intros l' sl' t l sl H.
-  induction sl as [|tail' tail H1 h H2].
-  - apply nilGuess.
-  - specialize (incEasyGuess t h tail') as HA.
-    assert (T : Guess (InsertSet tail' h) t = Hard -> Guess tail' t = Hard).
-    {
-      intros HB.
-      apply NNPP.
-      intro HC.
-      apply HA in HC.
-      contradiction.
-    }
-Qed.
-*)
-
-Parameter TextStrength: text -> strength.
-
 Parameter E_Sym D_Sym: text -> key -> text.
 Axiom symEnDe: forall k t, D_Sym k (E_Sym k t) = t.
-Axiom symDeEn: forall k t, D_Sym k (D_Sym k t) = t.
+Axiom symDeEn: forall k t, E_Sym k (D_Sym k t) = t.
 Axiom symTextSafety: forall k t, Guess (Singleton text (E_Sym k t)) t = Hard.
 
 Record key_pair := {pub: key; pr: key}.
@@ -140,7 +118,7 @@ Axiom asymDeEn: forall kp t, E_Asym (pr kp) (D_Asym (pub kp) t) = t.
 Parameter Hash: text -> text.
 Axiom rareConflictHash: forall t1 t2,
   Hash t1 = Hash t2 -> Guess (Singleton text (Hash t1)) t2 = Hard.
-Theorem onewayHash: forall t, Guess (Singleton text (Hash t)) t = Hard.
+Lemma onewayHash: forall t, Guess (Singleton text (Hash t)) t = Hard.
 Proof.
   intro t.
   apply rareConflictHash.
@@ -148,30 +126,55 @@ Proof.
 Qed.
 
 Parameter Kdf: password -> salt -> key.
-Axiom rareConflictKdf: forall p s,
-  (forall p', Kdf p s = Kdf p' s -> Guess (Couple text s (Kdf p s)) p' = Hard) /\
-  (forall s', Kdf p s = Kdf p s' -> Guess (Couple text p (Kdf p s)) s' = Hard).
-(* TODO *)
-Theorem saltyKdf: forall p s, Guess (Singleton text (p)) (Kdf p s) = Hard.
-
-Axiom onewayKdf: forall p s, Guess (Singleton text (Kdf p s)) p = Hard.
 
 Definition KEK := Kdf PWD Salt.
 Definition KEK_MEK := E_Sym KEK MEK.
 Definition H_MEK := Hash MEK.
 
-Inductive r_option :=
+Inductive auth_option :=
   | Some (k : key)
   | Fail.
 
 Definition Auth (PWD_t:password) :=
   let KEK_t := Kdf PWD_t Salt in
   let MEK_t := D_Sym KEK_t KEK_MEK in
-  match beq_text (Hash MEK_t) H_MEK with
-  | true => Some MEK_t
-  | false => Fail
-  end.
+  if (beq_text (Hash MEK_t) H_MEK) then Some MEK_t else Fail.
 
+(*
+  A correct password is able to unlock the MEK
+*)
+Lemma correctPwd: Auth PWD = Some MEK.
+Proof.
+  unfold Auth.
+  fold KEK.
+  assert (H1: D_Sym KEK KEK_MEK = MEK).
+  {
+    unfold KEK_MEK.
+    rewrite symEnDe.
+    reflexivity.
+  }
+  rewrite H1.
+  assert (H2: beq_text (Hash MEK) H_MEK = true).
+  {
+    fold H_MEK.
+    trivial.
+    rewrite Nat.eqb_eq.
+    reflexivity.
+  }
+  rewrite H2.
+  reflexivity.
+Qed.
+
+(*
+Axiom rareConflictKdf: forall p s,
+  (forall p', Kdf p s = Kdf p' s -> Guess (Couple text s (Kdf p s)) p' = Hard) /\
+  (forall s', Kdf p s = Kdf p s' -> Guess (Couple text p (Kdf p s)) s' = Hard).
+Theorem saltyKdf: forall p s, Guess (Singleton text (p)) (Kdf p s) = Hard.
+Axiom onewayKdf: forall p s, Guess (Singleton text (Kdf p s)) p = Hard.
+
+Axiom incEasyGuess: forall t h l, (Guess l t <> Hard) -> (Guess (Add text l h) t <> Hard).
+
+Parameter TextStrength: text -> strength.
 Parameter WeakSet: textSet.
 (* TODO: Change to Definition *)
 Axiom prioriLeaked: forall t, TextStrength t = Weak -> In text WeakSet t.
@@ -180,9 +183,6 @@ Require Import Coq.Classes.RelationClasses.
 Require Import Coq.Logic.Classical_Pred_Type.
 
 Axiom relationEquivalence: Equivalence TextRelated.
-
-
-(*
 
 Fixpoint SetStrength (l: list text) :=
   match l with
@@ -193,3 +193,4 @@ Fixpoint SetStrength (l: list text) :=
     end
   end.
 *)
+
