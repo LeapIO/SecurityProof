@@ -6,7 +6,6 @@ Require Import Coq.Sets.Powerset_facts.
 Require Import Coq.Logic.Classical.
 Require Import Coq.Logic.Classical_Prop.
 Require Import Coq.Arith.PeanoNat.
-
 Require Import Coq.Lists.List.
 Import ListNotations.
 Module ListEnsemble.
@@ -25,7 +24,6 @@ Definition salt := text.
 Definition password := text.
 Definition ciphertext := text.
 Definition textSet := Ensemble text.
-
 Definition beq_text := Nat.eqb.
 
 Parameter PWD: password.
@@ -33,22 +31,26 @@ Parameter Salt: salt.
 Parameter MEK: key.
 
 Parameter TextRelated: text -> text -> Prop.
-Definition UnrelatedSet (l: textSet) (t: text) :=
-  forall h, (in_set text l h) -> ~(TextRelated t h).
+Definition UnrelatedSet l t := forall h,
+  (in_set text l h) -> ~(TextRelated t h).
 
-Fixpoint as_set (l : list text) : Ensemble text :=
+Fixpoint as_set (l: list text) : textSet :=
   match l with
   | [] => Empty_set text
   | x :: xs => add_set text (as_set xs) x
   end.
 
-Parameter Guess: textSet -> text -> difficulty.
-Axiom nilGuess: forall t, Guess (as_set []) t = Hard.
+Parameter Guess:
+  textSet -> text -> difficulty.
+Axiom nilGuess:
+  forall t, Guess (as_set []) t = Hard.
 Axiom incHardGuess: forall t h l,
-  (Guess l t = Hard) /\ ~(TextRelated t h) -> (Guess (add_set text l h) t = Hard).
+  (Guess l t = Hard) /\ ~(TextRelated t h) ->
+  (Guess (add_set text l h) t = Hard).
 
 Lemma unrelatedGuess: forall uset t,
-  Finite text uset -> UnrelatedSet uset t -> Guess uset t = Hard.
+  Finite text uset -> UnrelatedSet uset t ->
+  Guess uset t = Hard.
 Proof.
   intros ll t l.
   induction l as [| l' l'f H m H0].
@@ -68,8 +70,11 @@ Proof.
     auto.
 Qed.
 
-Lemma unionTwoUnrelatedHardGuess: forall uset1 uset2 t, Finite text uset1 -> Finite text uset2 ->
-  UnrelatedSet uset1 t /\ UnrelatedSet uset2 t -> Guess (Union text uset1 uset2) t = Hard.
+Lemma unionTwoUnrelatedHardGuess:
+  forall s1 s2 t, Finite text s1 ->
+  Finite text s2 ->
+  UnrelatedSet s1 t /\ UnrelatedSet s2 t ->
+  Guess (Union text s1 s2) t = Hard.
 Proof.
   intros ll1 ll2 t l1 l2 H.
   apply unrelatedGuess.
@@ -84,8 +89,11 @@ Proof.
   auto. auto. auto.
 Qed.
 
-Lemma unionUnrelatedHardGuess: forall hset uset t, Finite text hset -> Finite text uset ->
-  UnrelatedSet uset t -> Guess hset t = Hard -> Guess (Union text hset uset) t = Hard.
+Lemma unionUnrelatedHardGuess:
+  forall s s' t, Finite text s ->
+  Finite text s' -> UnrelatedSet s' t ->
+  Guess s t = Hard ->
+  Guess (Union text s s') t = Hard.
 Proof.
   intros ll1 ll2 t l1 l2 H H0.
   induction l2 as [| l' l'f H1 m H2].
@@ -119,22 +127,32 @@ Proof.
     auto.
 Qed.
 
-Parameter E_Sym D_Sym: text -> key -> text.
-Axiom symEnDe: forall k t, D_Sym k (E_Sym k t) = t.
-Axiom symDeEn: forall k t, E_Sym k (D_Sym k t) = t.
-Axiom symTextSafety: forall k t, Guess (as_set [E_Sym k t]) t = Hard.
+Parameter E_Sym D_Sym:
+  key -> text -> text.
+Axiom symEnDe:
+  forall k t, D_Sym k (E_Sym k t) = t.
+Axiom symDeEn:
+  forall k t, E_Sym k (D_Sym k t) = t.
+Axiom symTextSafety: forall k t,
+  Guess (as_set [E_Sym k t]) t = Hard.
 
 Record key_pair := {pub: key; pr: key}.
-Axiom asymKeySafety: forall kp, Guess (as_set [pr kp]) (pub kp) = Hard.
+Axiom asymKeySafety: forall kp,
+  Guess (as_set [pr kp]) (pub kp) = Hard.
 
-Parameter E_Asym D_Asym: text -> key -> text.
-Axiom asymEnDe: forall kp t, D_Asym (pub kp) (E_Asym (pr kp) t) = t.
-Axiom asymDeEn: forall kp t, E_Asym (pr kp) (D_Asym (pub kp) t) = t.
+Parameter E_Asym D_Asym:
+  key -> text -> text.
+Axiom asymEnDe: forall kp t,
+  D_Asym (pub kp) (E_Asym (pr kp) t) = t.
+Axiom asymDeEn: forall kp t,
+  E_Asym (pr kp) (D_Asym (pub kp) t) = t.
 
 Parameter Hash: text -> text.
 Axiom rareConflictHash: forall t1 t2,
-  Hash t1 = Hash t2 -> Guess (as_set [Hash t1]) t2 = Hard.
-Lemma onewayHash: forall t, Guess (as_set [Hash t]) t = Hard.
+  Hash t1 = Hash t2 ->
+  Guess (as_set [Hash t1]) t2 = Hard.
+Lemma onewayHash: forall t,
+  Guess (as_set [Hash t]) t = Hard.
 Proof.
   intro t.
   apply rareConflictHash.
@@ -146,7 +164,6 @@ Parameter Kdf: password -> salt -> key.
 Definition KEK := Kdf PWD Salt.
 Definition KEK_MEK := E_Sym KEK MEK.
 Definition H_MEK := Hash MEK.
-
 Inductive auth_option :=
   | Some (k : key)
   | Fail.
@@ -154,7 +171,8 @@ Inductive auth_option :=
 Definition Auth (PWD_t:password) :=
   let KEK_t := Kdf PWD_t Salt in
   let MEK_t := D_Sym KEK_t KEK_MEK in
-  if (beq_text (Hash MEK_t) H_MEK) then Some MEK_t else Fail.
+  if (beq_text (Hash MEK_t) H_MEK)
+    then Some MEK_t else Fail.
 
 (*
   A correct password is able to unlock the MEK
