@@ -7,6 +7,14 @@ Require Import Coq.Logic.Classical.
 Require Import Coq.Logic.Classical_Prop.
 Require Import Coq.Arith.PeanoNat.
 
+Require Import Coq.Lists.List.
+Import ListNotations.
+Module ListEnsemble.
+  Definition in_set := Ensembles.In.
+  Definition add_set := Ensembles.Add.
+End ListEnsemble.
+Import ListEnsemble.
+
 Inductive difficulty : Type := Hard | Easy.
 Inductive strength : Type := Strong | Weak.
 Inductive safety : Type := Safe | Dangerous.
@@ -26,12 +34,18 @@ Parameter MEK: key.
 
 Parameter TextRelated: text -> text -> Prop.
 Definition UnrelatedSet (l: textSet) (t: text) :=
-  forall h, (In text l h) -> ~(TextRelated t h).
+  forall h, (in_set text l h) -> ~(TextRelated t h).
+
+Fixpoint as_set (l : list text) : Ensemble text :=
+  match l with
+  | [] => Empty_set text
+  | x :: xs => add_set text (as_set xs) x
+  end.
 
 Parameter Guess: textSet -> text -> difficulty.
-Axiom nilGuess: forall t, Guess (Empty_set text) t = Hard.
+Axiom nilGuess: forall t, Guess (as_set []) t = Hard.
 Axiom incHardGuess: forall t h l,
-  (Guess l t = Hard) /\ ~(TextRelated t h) -> (Guess (Add text l h) t = Hard).
+  (Guess l t = Hard) /\ ~(TextRelated t h) -> (Guess (add_set text l h) t = Hard).
 
 Lemma unrelatedGuess: forall uset t,
   Finite text uset -> UnrelatedSet uset t -> Guess uset t = Hard.
@@ -47,6 +61,7 @@ Proof.
     intros h H2.
     specialize (H1 h).
     specialize (Add_intro1 text l' m h) as H3.
+    unfold in_set in *.
     auto.
     specialize (H1 m).
     specialize (Add_intro2 text l' m) as H4.
@@ -84,15 +99,16 @@ Proof.
     apply incHardGuess.
     split.
     apply H1.
-    assert (H4: UnrelatedSet (Add text l' m) t -> UnrelatedSet l' t).
+    assert (H4: UnrelatedSet (add_set text l' m) t -> UnrelatedSet l' t).
     {
       unfold UnrelatedSet.
       intros A h.
       specialize (Add_intro1 text l' m h) as B.
+      unfold in_set in *.
       auto.
     }
     auto.
-    assert (H5: UnrelatedSet (Add text l' m) t -> ~ TextRelated t m).
+    assert (H5: UnrelatedSet (add_set text l' m) t -> ~ TextRelated t m).
     {
       unfold UnrelatedSet.
       intros C.
@@ -106,10 +122,10 @@ Qed.
 Parameter E_Sym D_Sym: text -> key -> text.
 Axiom symEnDe: forall k t, D_Sym k (E_Sym k t) = t.
 Axiom symDeEn: forall k t, E_Sym k (D_Sym k t) = t.
-Axiom symTextSafety: forall k t, Guess (Singleton text (E_Sym k t)) t = Hard.
+Axiom symTextSafety: forall k t, Guess (as_set [E_Sym k t]) t = Hard.
 
 Record key_pair := {pub: key; pr: key}.
-Axiom asymKeySafety: forall kp, Guess (Singleton text (pr kp)) (pub kp) = Hard.
+Axiom asymKeySafety: forall kp, Guess (as_set [pr kp]) (pub kp) = Hard.
 
 Parameter E_Asym D_Asym: text -> key -> text.
 Axiom asymEnDe: forall kp t, D_Asym (pub kp) (E_Asym (pr kp) t) = t.
@@ -117,8 +133,8 @@ Axiom asymDeEn: forall kp t, E_Asym (pr kp) (D_Asym (pub kp) t) = t.
 
 Parameter Hash: text -> text.
 Axiom rareConflictHash: forall t1 t2,
-  Hash t1 = Hash t2 -> Guess (Singleton text (Hash t1)) t2 = Hard.
-Lemma onewayHash: forall t, Guess (Singleton text (Hash t)) t = Hard.
+  Hash t1 = Hash t2 -> Guess (as_set [Hash t1]) t2 = Hard.
+Lemma onewayHash: forall t, Guess (as_set [Hash t]) t = Hard.
 Proof.
   intro t.
   apply rareConflictHash.
@@ -167,17 +183,16 @@ Qed.
 
 (*
 Axiom rareConflictKdf: forall p s,
-  (forall p', Kdf p s = Kdf p' s -> Guess (Couple text s (Kdf p s)) p' = Hard) /\
-  (forall s', Kdf p s = Kdf p s' -> Guess (Couple text p (Kdf p s)) s' = Hard).
-Theorem saltyKdf: forall p s, Guess (Singleton text (p)) (Kdf p s) = Hard.
-Axiom onewayKdf: forall p s, Guess (Singleton text (Kdf p s)) p = Hard.
-
-Axiom incEasyGuess: forall t h l, (Guess l t <> Hard) -> (Guess (Add text l h) t <> Hard).
+  (forall p', Kdf p s = Kdf p' s -> Guess (as_set [s;(Kdf p s)]) p' = Hard) /\
+  (forall s', Kdf p s = Kdf p s' -> Guess (as_set [p;(Kdf p s)]) s' = Hard).
+Theorem saltyKdf: forall p s, Guess (as_set [p]) (Kdf p s) = Hard.
+Axiom onewayKdf: forall p s, Guess (as_set [Kdf p s]) p = Hard.
+Axiom incEasyGuess: forall t h l, (Guess l t <> Hard) -> (Guess (add_set text l h) t <> Hard).
 
 Parameter TextStrength: text -> strength.
 Parameter WeakSet: textSet.
 (* TODO: Change to Definition *)
-Axiom prioriLeaked: forall t, TextStrength t = Weak -> In text WeakSet t.
+Axiom prioriLeaked: forall t, TextStrength t = Weak -> in_set text WeakSet t.
 
 Require Import Coq.Classes.RelationClasses.
 Require Import Coq.Logic.Classical_Pred_Type.
