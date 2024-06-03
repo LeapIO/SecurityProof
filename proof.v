@@ -25,10 +25,12 @@ Definition password := text.
 Definition ciphertext := text.
 Definition textSet := Ensemble text.
 Definition beq_text := Nat.eqb.
+Record key_pair := {pub: key; pr: key}.
 
 Parameter PWD: password.
 Parameter Salt: salt.
 Parameter MEK: key.
+Parameter MK DK: key_pair.
 
 Parameter TextRelated: text -> text -> Prop.
 Definition UnrelatedSet l t := forall h,
@@ -136,7 +138,6 @@ Axiom symDeEn:
 Axiom symTextSafety: forall k t,
   Guess (as_set [E_Sym k t]) t = Hard.
 
-Record key_pair := {pub: key; pr: key}.
 Axiom asymKeySafety: forall kp,
   Guess (as_set [pr kp]) (pub kp) = Hard.
 
@@ -165,19 +166,19 @@ Definition KEK := Kdf PWD Salt.
 Definition KEK_MEK := E_Sym KEK MEK.
 Definition H_MEK := Hash MEK.
 Inductive auth_option :=
-  | Some (k : key)
-  | Fail.
+  | ASome (mek : key)
+  | AFail.
 
 Definition Auth (PWD_t:password) :=
   let KEK_t := Kdf PWD_t Salt in
   let MEK_t := D_Sym KEK_t KEK_MEK in
   if (beq_text (Hash MEK_t) H_MEK)
-    then Some MEK_t else Fail.
+    then ASome MEK_t else AFail.
 
 (*
   A correct password is able to unlock the MEK
 *)
-Lemma correctPwd: Auth PWD = Some MEK.
+Lemma correctPwd: Auth PWD = ASome MEK.
 Proof.
   unfold Auth.
   fold KEK.
@@ -199,7 +200,43 @@ Proof.
   reflexivity.
 Qed.
 
+Parameter Sign: key -> text -> text.
+Parameter Verify:
+  key -> text -> text -> bool.
+Axiom signCorrect: forall kp t,
+  let sig := Sign (pr kp) t in
+  (Verify (pub kp) t sig) = true.
+
+Inductive wrap_option :=
+  | WSome (e_mek : text)
+  | WFail.
+Record wrapped := {mek: key; nonce: nat}.
+Parameter Conc: wrapped -> text.
+Parameter Splt: text -> wrapped.
+Axiom SplitConcatenation:
+  forall w, w = Splt (Conc w).
+
+(* TODO
+  Currently use MEK directly
+  It should be fetched from Auth
+  Some funcionic things may help
+*)
+Definition Wrap PUB_t SIG_t (N_t:nat) :=
+  if (Verify (pub MK) PUB_t SIG_t)
+    then let w := {|mek := MEK;
+                  nonce := N_t|} in
+    WSome (E_Asym PUB_t (Conc w))
+    else WFail.
+
 (*
+
+(* TODO: Hard instead of ~ *)
+Axiom signAuthority:
+  forall s k, Guess s k = Hard ->
+  forall kp t sig, pr kp = k ->
+  ~(Verify (pub kp) t sig).
+Axiom signIntegrity:.
+
 Axiom rareConflictKdf: forall p s,
   (forall p', Kdf p s = Kdf p' s -> Guess (as_set [s;(Kdf p s)]) p' = Hard) /\
   (forall s', Kdf p s = Kdf p s' -> Guess (as_set [p;(Kdf p s)]) s' = Hard).
