@@ -296,18 +296,18 @@ Definition Wrap mek k sig n :=
     else WFail.
 
 Lemma correctWrap:
-  forall k n,
-  Wrap k (pub DK) SIG n =
-    WSome (E_Asym 
-          (pub DK)
-          (Conc {|mek := k;
+  forall mek k sig n,
+  sig = Sign (pr MK) k ->
+  Wrap mek k sig n =
+    WSome (E_Asym k
+          (Conc {|mek := mek;
                   nonce := n|})).
 Proof.
-  intros k n.
-  specialize (signCorrect MK k) as H1.
+  intros mek k sig n H1.
   unfold Wrap.
-  assert (H2: Verify (pub MK) (pub DK) SIG = true).
+  assert (H2: Verify (pub MK) k sig = true).
   {
+    rewrite H1.
     apply signCorrect.
   }
   rewrite H2.
@@ -325,28 +325,24 @@ Definition Unwrap w n:=
     else UFail.
 
 Lemma correctUnwrap:
-  forall k n,
-  Unwrap ( E_Asym 
-            (pub DK)
-            (Conc {|mek := k;
-                    nonce := n|})
-         ) n = USome k.
+  forall w n,
+  nonce w = n ->
+  Unwrap ( E_Asym (pub DK) (Conc w)) n = USome (mek w).
 Proof.
-  intros k n.
+  intros w n H1.
   unfold Unwrap.
-  set (w := {| mek := k; nonce := n |}).
-  specialize (asymEnDe DK (Conc w)) as H4.
-  specialize (SplitConcatenation w) as H5.
-  assert (H3: nonce (Splt (D_Asym (pr DK) (E_Asym (pub DK) (Conc w)))) = n).
+  specialize (asymEnDe DK (Conc w)) as H2.
+  specialize (SplitConcatenation w) as H3.
+  assert (H4: nonce (Splt (D_Asym (pr DK) (E_Asym (pub DK) (Conc w)))) = n).
   {
-    rewrite H4.
-    rewrite <- H5.
+    rewrite H2.
+    rewrite <- H3.
     auto.
   }
-  rewrite H3.
-  rewrite Nat.eqb_refl.
   rewrite H4.
-  rewrite <- H5.
+  rewrite Nat.eqb_refl.
+  rewrite H2.
+  rewrite <- H3.
   auto.
 Qed.
 
@@ -359,7 +355,10 @@ Proof.
   exists (E_Asym (pub DK) (Conc {|mek := k; nonce := n|})).
   split.
   - apply correctWrap.
+    unfold SIG.
+    auto.
   - apply correctUnwrap.
+    auto.
 Qed.
 
 (*
