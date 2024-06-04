@@ -148,9 +148,9 @@ Axiom asymKeySafety: forall kp,
 Parameter E_Asym D_Asym:
   key -> text -> text.
 Axiom asymEnDe: forall kp t,
-  D_Asym (pub kp) (E_Asym (pr kp) t) = t.
+  D_Asym (pr kp) (E_Asym (pub kp) t) = t.
 Axiom asymDeEn: forall kp t,
-  E_Asym (pr kp) (D_Asym (pub kp) t) = t.
+  E_Asym (pub kp) (D_Asym (pr kp) t) = t.
 
 Parameter Hash: text -> text.
 Axiom rareConflictHash: forall t1 t2,
@@ -206,7 +206,7 @@ Proof.
 Qed.
 
 (*
-  TPM only returns MEK or fails except rare cases
+  Auth only returns MEK or fails, except rare cases
 *)
 Lemma returnMEKorFail: forall p,
   Auth p = ASome MEK \/ Auth p = AFail \/ Rare p.
@@ -276,6 +276,8 @@ Parameter Verify:
 Axiom signCorrect: forall kp t,
   let sig := Sign (pr kp) t in
   (Verify (pub kp) t sig) = true.
+Definition SIG :=
+  Sign (pr MK) (pub DK).
 
 Inductive wrap_option :=
   | WSome (e_mek : text)
@@ -286,17 +288,57 @@ Parameter Splt: text -> wrapped.
 Axiom SplitConcatenation:
   forall w, w = Splt (Conc w).
 
-(* TODO
-  Currently use MEK directly
-  It should be fetched from Auth
-  Some funcionic things may help
-*)
-Definition Wrap PUB_t SIG_t (N_t:nat) :=
-  if (Verify (pub MK) PUB_t SIG_t)
-    then let w := {|mek := MEK;
-                  nonce := N_t|} in
-    WSome (E_Asym PUB_t (Conc w))
+Definition Wrap mek k sig n :=
+  if (Verify (pub MK) k sig)
+    then let w := {|mek := mek;
+                  nonce := n|} in
+    WSome (E_Asym k (Conc w))
     else WFail.
+
+Inductive unwrap_option :=
+  | USome (mek : text)
+  | UFail.
+Definition Unwrap w n:=
+  let uw :=
+    Splt (D_Asym (pr DK) w) in
+  if (beq_text (nonce uw) n)
+    then USome (mek uw)
+    else UFail.
+
+Definition Pipe t: text := t.
+
+Lemma WrapUnwrap:
+  forall k n, exists e,
+  Wrap k (pub DK) SIG n = WSome e /\
+  Unwrap e n = USome k.
+Proof.
+  intros k n.
+  exists (E_Asym (pub DK) (Conc {|mek := k; nonce := n|})).
+  split.
+  - specialize (signCorrect MK k) as H1.
+    unfold Wrap.
+    assert (H2: Verify (pub MK) (pub DK) SIG = true).
+    {
+      apply signCorrect.
+    }
+    rewrite H2.
+    auto.
+  - unfold Unwrap.
+    set (w := {| mek := k; nonce := n |}).
+    specialize (asymEnDe DK (Conc w)) as H4.
+    specialize (SplitConcatenation w) as H5.
+    assert (H3: nonce (Splt (D_Asym (pr DK) (E_Asym (pub DK) (Conc w)))) = n).
+    {
+      rewrite H4.
+      rewrite <- H5.
+      auto.
+    }
+    rewrite H3.
+    rewrite Nat.eqb_refl.
+    rewrite H4.
+    rewrite <- H5.
+    auto.
+Qed.
 
 (*
 
