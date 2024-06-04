@@ -129,6 +129,10 @@ Proof.
     auto.
 Qed.
 
+Parameter Rare: text -> Prop.
+Axiom invRare: forall f t,
+  Rare (f t) -> Rare t.
+
 Parameter E_Sym D_Sym:
   key -> text -> text.
 Axiom symEnDe:
@@ -151,7 +155,8 @@ Axiom asymDeEn: forall kp t,
 Parameter Hash: text -> text.
 Axiom rareConflictHash: forall t1 t2,
   Hash t1 = Hash t2 ->
-  Guess (as_set [Hash t1]) t2 = Hard.
+  (Rare t2 /\
+  Guess (as_set [Hash t1]) t2 = Hard).
 Lemma onewayHash: forall t,
   Guess (as_set [Hash t]) t = Hard.
 Proof.
@@ -200,6 +205,71 @@ Proof.
   reflexivity.
 Qed.
 
+(*
+  TPM only returns MEK or fails except rare cases
+*)
+Lemma returnMEKorFail: forall p,
+  Auth p = ASome MEK \/ Auth p = AFail \/ Rare p.
+Proof.
+  intro p.
+  case_eq (Auth p).
+  - intros k H1.
+    apply NNPP.
+    intro H2.
+    apply not_or_and in H2.
+    destruct H2 as [H3 H4].
+    apply not_or_and in H4.
+    destruct H4 as [H5 H6].
+    assert (H7: k <> MEK).
+    {
+      auto.
+    }
+    clear H3 H5.
+    case_eq (beq_text p PWD).
+    * intro HA.
+      rewrite Nat.eqb_eq in HA.
+      rewrite HA in H1.
+      rewrite correctPwd in H1.
+      inversion H1 as [HB].
+      apply H7.
+      auto.
+    * intro HA.
+      rewrite Nat.eqb_neq in HA.
+      unfold Auth in H1.
+      assert (HB: Hash (D_Sym (Kdf p Salt) KEK_MEK) = H_MEK).
+      {
+        case_eq (beq_text (Hash (D_Sym (Kdf p Salt) KEK_MEK)) H_MEK).
+        + intro HP.
+          rewrite Nat.eqb_eq in HP.
+          auto.
+        + intro HP.
+          rewrite HP in H1.
+          inversion H1.
+      }
+      clear H1.
+      unfold H_MEK in HB.
+      specialize (rareConflictHash MEK (D_Sym (Kdf p Salt) KEK_MEK)) as HC.
+      assert (HD: Rare (D_Sym (Kdf p Salt) KEK_MEK)).
+      {
+        assert (HP: Rare (D_Sym (Kdf p Salt) KEK_MEK) /\
+          Guess (as_set [Hash MEK]) (D_Sym (Kdf p Salt) KEK_MEK) = Hard).
+        {
+          auto.
+        }
+        apply proj1 in HP.
+        auto.
+      }
+      clear HB HC.
+      specialize (invRare (fun x => D_Sym x KEK_MEK) (Kdf p Salt)) as HE.
+      specialize (invRare (fun x => Kdf x Salt) p) as HF.
+      assert (HG: Rare p).
+      {
+        auto.
+      }
+      contradiction.
+  - auto.
+Qed.
+
 Parameter Sign: key -> text -> text.
 Parameter Verify:
   key -> text -> text -> bool.
@@ -237,9 +307,21 @@ Axiom signAuthority:
   ~(Verify (pub kp) t sig).
 Axiom signIntegrity:.
 
-Axiom rareConflictKdf: forall p s,
-  (forall p', Kdf p s = Kdf p' s -> Guess (as_set [s;(Kdf p s)]) p' = Hard) /\
-  (forall s', Kdf p s = Kdf p s' -> Guess (as_set [p;(Kdf p s)]) s' = Hard).
+Axiom goodKdf: forall p s p',
+  let kek := (Kdf p s) in
+  kek = Kdf p' s ->
+  (Rare p' /\
+  Guess (as_set [s;kek]) p' = Hard).
+Lemma rareConflictKdf: forall p s p',
+  p <> p' /\ Kdf p s = Kdf p' s ->
+  Rare p'.
+Proof.
+  intros p s p' H.
+  destruct H as [H1 H2].
+  specialize (goodKdf p s p') as H3.
+  destruct H3 as [H4 H5].
+  auto. auto.
+Qed.
 Theorem saltyKdf: forall p s, Guess (as_set [p]) (Kdf p s) = Hard.
 Axiom onewayKdf: forall p s, Guess (as_set [Kdf p s]) p = Hard.
 Axiom incEasyGuess: forall t h l, (Guess l t <> Hard) -> (Guess (add_set text l h) t <> Hard).
