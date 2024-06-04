@@ -206,6 +206,51 @@ Proof.
 Qed.
 
 (*
+  Only correct password leads to ASome MEK, except rare cases
+*)
+Lemma someAuth: forall p,
+  Auth p = ASome MEK -> p = PWD \/ Rare p.
+Proof.
+  intros p H1.
+  apply NNPP.
+  intro H2.
+  apply not_or_and in H2.
+  destruct H2 as [H3 H4].
+  unfold Auth in H1.
+  assert (H5: Hash (D_Sym (Kdf p Salt) KEK_MEK) = H_MEK).
+  {
+    case_eq (beq_text (Hash (D_Sym (Kdf p Salt) KEK_MEK)) H_MEK).
+    - intro HP.
+      rewrite Nat.eqb_eq in HP.
+      auto.
+    - intro HP.
+      rewrite HP in H1.
+      inversion H1.
+  }
+  clear H1.
+  unfold H_MEK in H5.
+  specialize (rareConflictHash MEK (D_Sym (Kdf p Salt) KEK_MEK)) as H6.
+  assert (H7: Rare (D_Sym (Kdf p Salt) KEK_MEK)).
+  {
+    assert (H8: Rare (D_Sym (Kdf p Salt) KEK_MEK) /\
+      Guess (as_set [Hash MEK]) (D_Sym (Kdf p Salt) KEK_MEK) = Hard).
+    {
+      auto.
+    }
+    apply proj1 in H8.
+    auto.
+  }
+  clear H5 H6.
+  specialize (invRare (fun x => D_Sym x KEK_MEK) (Kdf p Salt)) as H9.
+  specialize (invRare (fun x => Kdf x Salt) p) as H10.
+  assert (H11: Rare p).
+  {
+    auto.
+  }
+  contradiction.
+Qed.
+
+(*
   Auth only returns MEK or fails, except rare cases
 *)
 Lemma anyAuth: forall p,
