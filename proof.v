@@ -183,7 +183,7 @@ Definition Auth (PWD_t:password) :=
 (*
   A correct password is able to unlock the MEK
 *)
-Lemma correctPwd: Auth PWD = ASome MEK.
+Lemma correctAuth: Auth PWD = ASome MEK.
 Proof.
   unfold Auth.
   fold KEK.
@@ -208,7 +208,7 @@ Qed.
 (*
   Auth only returns MEK or fails, except rare cases
 *)
-Lemma returnMEKorFail: forall p,
+Lemma anyAuth: forall p,
   Auth p = ASome MEK \/ Auth p = AFail \/ Rare p.
 Proof.
   intro p.
@@ -229,7 +229,7 @@ Proof.
     * intro HA.
       rewrite Nat.eqb_eq in HA.
       rewrite HA in H1.
-      rewrite correctPwd in H1.
+      rewrite correctAuth in H1.
       inversion H1 as [HB].
       apply H7.
       auto.
@@ -295,6 +295,25 @@ Definition Wrap mek k sig n :=
     WSome (E_Asym k (Conc w))
     else WFail.
 
+Lemma correctWrap:
+  forall k n,
+  Wrap k (pub DK) SIG n =
+    WSome (E_Asym 
+          (pub DK)
+          (Conc {|mek := k;
+                  nonce := n|})).
+Proof.
+  intros k n.
+  specialize (signCorrect MK k) as H1.
+  unfold Wrap.
+  assert (H2: Verify (pub MK) (pub DK) SIG = true).
+  {
+    apply signCorrect.
+  }
+  rewrite H2.
+  auto.
+Qed.
+
 Inductive unwrap_option :=
   | USome (mek : text)
   | UFail.
@@ -305,7 +324,31 @@ Definition Unwrap w n:=
     then USome (mek uw)
     else UFail.
 
-Definition Pipe t: text := t.
+Lemma correctUnwrap:
+  forall k n,
+  Unwrap ( E_Asym 
+            (pub DK)
+            (Conc {|mek := k;
+                    nonce := n|})
+         ) n = USome k.
+Proof.
+  intros k n.
+  unfold Unwrap.
+  set (w := {| mek := k; nonce := n |}).
+  specialize (asymEnDe DK (Conc w)) as H4.
+  specialize (SplitConcatenation w) as H5.
+  assert (H3: nonce (Splt (D_Asym (pr DK) (E_Asym (pub DK) (Conc w)))) = n).
+  {
+    rewrite H4.
+    rewrite <- H5.
+    auto.
+  }
+  rewrite H3.
+  rewrite Nat.eqb_refl.
+  rewrite H4.
+  rewrite <- H5.
+  auto.
+Qed.
 
 Lemma WrapUnwrap:
   forall k n, exists e,
@@ -315,29 +358,8 @@ Proof.
   intros k n.
   exists (E_Asym (pub DK) (Conc {|mek := k; nonce := n|})).
   split.
-  - specialize (signCorrect MK k) as H1.
-    unfold Wrap.
-    assert (H2: Verify (pub MK) (pub DK) SIG = true).
-    {
-      apply signCorrect.
-    }
-    rewrite H2.
-    auto.
-  - unfold Unwrap.
-    set (w := {| mek := k; nonce := n |}).
-    specialize (asymEnDe DK (Conc w)) as H4.
-    specialize (SplitConcatenation w) as H5.
-    assert (H3: nonce (Splt (D_Asym (pr DK) (E_Asym (pub DK) (Conc w)))) = n).
-    {
-      rewrite H4.
-      rewrite <- H5.
-      auto.
-    }
-    rewrite H3.
-    rewrite Nat.eqb_refl.
-    rewrite H4.
-    rewrite <- H5.
-    auto.
+  - apply correctWrap.
+  - apply correctUnwrap.
 Qed.
 
 (*
