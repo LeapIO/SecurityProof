@@ -1,4 +1,7 @@
 From LeapSecurity Require Export Definitions.
+Require Import Coq.Sets.Ensembles.
+Require Import Coq.Lists.List.
+Import ListNotations.
 
 Parameter PWD: password.
 Parameter Salt: salt.
@@ -14,7 +17,19 @@ Definition MVerify t sig :=
   Verify (pub MK) t sig.
 Definition SIG := MSign (pub DK).
 
-Definition Auth (PWD_t:password) :=
+Definition Pipe t (trusted:bool) :=
+  if trusted 
+    then {|data := t;
+           leaked := (as_set [])|}
+    else {|data := t;
+           leaked := (as_set [t])|}.
+
+Parameter EnterPwd: password.
+Parameter FetchPub: key.
+Parameter FetchSig: text.
+Parameter GenNonce: nat.
+
+Definition Auth PWD_t :=
   let KEK_t := Kdf PWD_t Salt in
   let MEK_t := D_Sym KEK_t KEK_MEK in
   if (beq_text (Hash MEK_t) H_MEK)
@@ -33,3 +48,42 @@ Definition Unwrap w n:=
   if (beq_text (nonce uw) n)
     then USome (mek uw)
     else UFail.
+
+Definition AnalyzeLeapSecurity
+  (Pipe_t : text->bool->pipeout)
+  (EnterPwd_t : password)
+  (FetchPub_t: key)
+  (FetchSig_t: text)
+  (GenNonce_t : nat)
+  (Auth_t : password->auth_option)
+  (Wrap_t : text->key->text->nat->wrap_option)
+  (Unwrap_t : text->nat->unwrap_option) :=
+  let eout := EnterPwd_t in
+  let etoa := Pipe_t eout true in
+  let aout := Auth_t (data etoa) in
+  match aout with
+  | AFail => LFail
+  | ASome mek =>
+    let atow := Pipe_t mek true in
+    let pubk := FetchPub_t in
+    let sig := FetchSig_t in
+    let nonce := GenNonce_t in
+    let wout := Wrap_t (data atow) pubk sig nonce in
+    match wout with
+    | WFail => LFail
+    | WSome w =>
+      let wtou := Pipe_t w false in
+      let uout := Unwrap_t (data wtou) nonce in
+      match uout with
+      | UFail => LFail
+      | USome res =>
+        let unsafe :=
+          Union text (leaked etoa)
+          (Union text (leaked atow)
+                      (leaked wtou)) in
+        let result := {|final := res;
+                     unsafe := unsafe|} in
+        LSome result
+      end
+    end
+  end.

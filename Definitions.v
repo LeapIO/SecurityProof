@@ -2,13 +2,14 @@ Require Import Coq.Sets.Ensembles.
 Require Import Coq.Lists.List.
 Import ListNotations.
 
+Definition text := nat.
+
 Module ListEnsemble.
   Definition in_set := Ensembles.In.
   Definition add_set := Ensembles.Add.
 End ListEnsemble.
 Import ListEnsemble.
 
-Definition text := nat.
 Definition key := text.
 Definition salt := text.
 Definition password := text.
@@ -18,6 +19,10 @@ Definition beq_text := Nat.eqb.
 
 Record key_pair := {pub: key; pr: key}.
 Record wrapped := {mek: key; nonce: nat}.
+Record pipeout := {data: text;
+                   leaked: textSet}.
+Record leapout := {final: key;
+                   unsafe: textSet}.
 
 Inductive auth_option :=
   | ASome (mek : key)
@@ -28,6 +33,9 @@ Inductive wrap_option :=
 Inductive unwrap_option :=
   | USome (mek : text)
   | UFail.
+Inductive leap_option :=
+  | LSome (res : leapout)
+  | LFail.
 
 Parameter TextRelated: text -> text -> Prop.
 Definition UnrelatedSet l t := forall h,

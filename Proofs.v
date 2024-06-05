@@ -1,14 +1,6 @@
 From LeapSecurity Require Export Core.
-Require Import Coq.Sets.Ensembles.
-Require Import Coq.Sets.Finite_sets.
-Require Import Coq.Sets.Constructive_sets.
 Require Import Coq.Sets.Finite_sets_facts.
-Require Import Coq.Sets.Powerset_facts.
-Require Import Coq.Logic.Classical.
-Require Import Coq.Logic.Classical_Prop.
-Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
-
 Import ListNotations.
 Import ListEnsemble.
 
@@ -152,7 +144,7 @@ Proof.
   assert (H7: Rare (D_Sym (Kdf p Salt) KEK_MEK)).
   {
     assert (H8: Rare (D_Sym (Kdf p Salt) KEK_MEK) /\
-      Safe (as_set [Hash MEK]) (D_Sym (Kdf p Salt) KEK_MEK) ).
+      Safe (as_set [Hash MEK]) (D_Sym (Kdf p Salt) KEK_MEK)).
     {
       auto.
     }
@@ -216,7 +208,7 @@ Proof.
       assert (HD: Rare (D_Sym (Kdf p Salt) KEK_MEK)).
       {
         assert (HP: Rare (D_Sym (Kdf p Salt) KEK_MEK) /\
-          Safe (as_set [Hash MEK]) (D_Sym (Kdf p Salt) KEK_MEK) ).
+          Safe (as_set [Hash MEK]) (D_Sym (Kdf p Salt) KEK_MEK)).
         {
           auto.
         }
@@ -234,6 +226,9 @@ Proof.
   - auto.
 Qed.
 
+(*
+  A correct k+sig is able to retrieve the wrapped MEK
+*)
 Lemma correctWrap:
   forall mek k sig n,
   sig = MSign k ->
@@ -310,51 +305,18 @@ Proof.
     auto.
 Qed.
 
-(*
-
-(* TODO:  instead of ~ *)
-Axiom signAuthority:
-  forall s k, Safe s k  ->
-  forall kp t sig, pr kp = k ->
-  ~(Verify (pub kp) t sig).
-Axiom signIntegrity:.
-
-Axiom goodKdf: forall p s p',
-  let kek := (Kdf p s) in
-  kek = Kdf p' s ->
-  (Rare p' /\
-  Safe (as_set [s;kek]) p' ).
-Lemma rareConflictKdf: forall p s p',
-  p <> p' /\ Kdf p s = Kdf p' s ->
-  Rare p'.
-Proof.
-  intros p s p' H.
-  destruct H as [H1 H2].
-  specialize (goodKdf p s p') as H3.
-  destruct H3 as [H4 H5].
-  auto. auto.
-Qed.
-Theorem saltyKdf: forall p s, Safe (as_set [p]) (Kdf p s).
-Axiom onewayKdf: forall p s, Safe (as_set [Kdf p s]) p.
-Axiom incEasySafe: forall t h l, (Safe l t <> ) -> (Safe (add_set text l h) t <> ).
-
-Parameter TextStrength: text -> strength.
-Parameter WeakSet: textSet.
-(* TODO: Change to Definition *)
-Axiom prioriLeaked: forall t, TextStrength t = Weak -> in_set text WeakSet t.
-
-Require Import Coq.Classes.RelationClasses.
-Require Import Coq.Logic.Classical_Pred_Type.
-
-Axiom relationEquivalence: Equivalence TextRelated.
-
-Fixpoint SetStrength (l: list text) :=
-  match l with
-  | nil => Strong
-  | h :: t => match (TextStrength h) with
-    | Weak => Weak
-    | Strong => SetStrength t
-    end
-  end.
-*)
-
+Theorem correctLeapSecurity:
+  EnterPwd = PWD ->
+  let res :=
+    AnalyzeLeapSecurity
+      Pipe
+      EnterPwd
+      FetchPub
+      FetchSig
+      GenNonce
+      Auth
+      Wrap
+      Unwrap
+  in exists result,
+  res = LSome result /\
+        final result = MEK.
