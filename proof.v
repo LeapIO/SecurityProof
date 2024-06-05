@@ -318,11 +318,14 @@ Qed.
 Parameter Sign: key -> text -> text.
 Parameter Verify:
   key -> text -> text -> bool.
-Axiom signCorrect: forall kp t,
-  let sig := Sign (pr kp) t in
-  (Verify (pub kp) t sig) = true.
-Definition SIG :=
-  Sign (pr MK) (pub DK).
+Axiom signCorrect: forall kp t sig,
+  sig = Sign (pr kp) t \/ Rare sig <->
+  Verify (pub kp) t sig = true.
+
+Definition MSign t := Sign (pr MK) t.
+Definition MVerify t sig :=
+  Verify (pub MK) t sig.
+Definition SIG := MSign (pub DK).
 
 Inductive wrap_option :=
   | WSome (e_mek : text)
@@ -334,7 +337,7 @@ Axiom SplitConcatenation:
   forall w, w = Splt (Conc w).
 
 Definition Wrap mek k sig n :=
-  if (Verify (pub MK) k sig)
+  if (MVerify k sig)
     then let w := {|mek := mek;
                   nonce := n|} in
     WSome (E_Asym k (Conc w))
@@ -342,7 +345,7 @@ Definition Wrap mek k sig n :=
 
 Lemma correctWrap:
   forall mek k sig n,
-  sig = Sign (pr MK) k ->
+  sig = MSign k ->
   Wrap mek k sig n =
     WSome (E_Asym k
           (Conc {|mek := mek;
@@ -350,13 +353,33 @@ Lemma correctWrap:
 Proof.
   intros mek k sig n H1.
   unfold Wrap.
-  assert (H2: Verify (pub MK) k sig = true).
+  assert (H2: MVerify k sig = true).
   {
     rewrite H1.
     apply signCorrect.
+    auto.
   }
   rewrite H2.
   auto.
+Qed.
+
+(*
+  Only verified k+sig leads to WSome w, except rare cases
+*)
+Lemma someWrap: forall mek k sig n,
+  exists w, Wrap mek k sig n = WSome w ->
+  sig = MSign k \/ Rare sig.
+Proof.
+  intros mek k sign n.
+  exists (E_Asym k (Conc {|mek := mek;
+                           nonce := n|})).
+  unfold Wrap.
+  case_eq (MVerify k sign).
+  - intros H1 H2.
+    apply signCorrect.
+    auto.
+  - intros H1 H2.
+    inversion H2.
 Qed.
 
 Inductive unwrap_option :=
