@@ -66,8 +66,11 @@ Definition AnalyzeLeapSecurity
   | ASome mek =>
     let atow := Pipe_t mek true in
     let pubk := FetchPub_t in
+    let ptow := Pipe_t pubk false in
     let sig := FetchSig_t in
+    let stow := Pipe_t sig false in
     let nonce := GenNonce_t in
+    let ntow := Pipe_t nonce false in
     let wout := Wrap_t (data atow) pubk sig nonce in
     match wout with
     | WFail => LFail
@@ -80,7 +83,10 @@ Definition AnalyzeLeapSecurity
         let unsafe :=
           Union text (leaked etoa)
           (Union text (leaked atow)
-                      (leaked wtou)) in
+           (Union text (leaked ptow)
+            (Union text (leaked stow)
+             (Union text (leaked ntow)
+                          (leaked wtou))))) in
         let result := {|final := res;
                      unsafe := unsafe|} in
         LSome result

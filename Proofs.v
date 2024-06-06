@@ -290,7 +290,7 @@ Proof.
   auto.
 Qed.
 
-Theorem correctNormalProcess:
+Theorem correctLeapSecurity:
   let w := E_Asym (pub DK) (
            Conc {|mek := MEK;
                   nonce := GenNonce|})
@@ -299,7 +299,8 @@ Theorem correctNormalProcess:
      FetchSig = SIG ->
   NormalProcess =
     LSome {|final := MEK;
-            unsafe := as_set ([w])|}.
+            unsafe := as_set
+             [w; GenNonce; SIG; pub DK]|}.
 Proof.
   intros w H1 H2 H3.
   unfold NormalProcess.
@@ -315,11 +316,11 @@ Proof.
   rewrite correctUnwrap.
   f_equal.
   f_equal.
-  rewrite Union_commutative.
-  rewrite Empty_set_zero.
-  rewrite Union_commutative.
-  rewrite Empty_set_zero.
-  trivial.
+  rewrite ?Empty_set_zero.
+  unfold add_set.
+  rewrite ?Empty_set_zero'.
+  unfold Ensembles.Add.
+  auto 10 with sets.
   trivial.
   trivial.
 Qed.
