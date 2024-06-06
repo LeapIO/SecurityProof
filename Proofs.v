@@ -290,33 +290,36 @@ Proof.
   auto.
 Qed.
 
-Lemma WrapUnwrap:
-  forall k n, exists e,
-  Wrap k (pub DK) SIG n = WSome e /\
-  Unwrap e n = USome k.
+Theorem correctNormalProcess:
+  let w := E_Asym (pub DK) (
+           Conc {|mek := MEK;
+                  nonce := GenNonce|})
+  in EnterPwd = PWD ->
+     FetchPub = pub DK ->
+     FetchSig = SIG ->
+  NormalProcess =
+    LSome {|final := MEK;
+            unsafe := as_set ([w])|}.
 Proof.
-  intros k n.
-  exists (E_Asym (pub DK) (Conc {|mek := k; nonce := n|})).
-  split.
-  - apply correctWrap.
-    unfold SIG.
-    auto.
-  - apply correctUnwrap.
-    auto.
+  intros w H1 H2 H3.
+  unfold NormalProcess.
+  rewrite H1.
+  rewrite H2.
+  rewrite H3.
+  unfold AnalyzeLeapSecurity.
+  unfold Pipe.
+  unfold w.
+  simpl.
+  rewrite correctAuth.
+  rewrite correctWrap.
+  rewrite correctUnwrap.
+  f_equal.
+  f_equal.
+  rewrite Union_commutative.
+  rewrite Empty_set_zero.
+  rewrite Union_commutative.
+  rewrite Empty_set_zero.
+  trivial.
+  trivial.
+  trivial.
 Qed.
-
-Theorem correctLeapSecurity:
-  EnterPwd = PWD ->
-  let res :=
-    AnalyzeLeapSecurity
-      Pipe
-      EnterPwd
-      FetchPub
-      FetchSig
-      GenNonce
-      Auth
-      Wrap
-      Unwrap
-  in exists result,
-  res = LSome result /\
-        final result = MEK.

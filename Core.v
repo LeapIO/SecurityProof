@@ -87,3 +87,14 @@ Definition AnalyzeLeapSecurity
       end
     end
   end.
+
+Definition NormalProcess :=
+  AnalyzeLeapSecurity 
+    Pipe
+    EnterPwd
+    FetchPub
+    FetchSig
+    GenNonce
+    Auth
+    Wrap
+    Unwrap.
