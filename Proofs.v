@@ -117,7 +117,7 @@ Proof.
 Qed.
 
 (*
-  Only correct password leads to ASome MEK, except rare cases
+  Only correct password leads to ASome MEK, except cracked cases
 *)
 Lemma someAuth: forall p,
   Auth p = ASome MEK -> p = PWD \/ CrackHash.
@@ -147,7 +147,7 @@ Proof.
 Qed.
 
 (*
-  Auth only returns MEK or fails, except rare cases
+  Auth only returns MEK or fails, except cracked cases
 *)
 Lemma anyAuth: forall p,
   Auth p = ASome MEK \/ Auth p = AFail \/ CrackHash.
@@ -294,5 +294,24 @@ Proof.
 Qed.
 
 Theorem anyFakePubSig: forall fp fs,
+  fs <> MSign fp ->
   EnterPwd = PWD ->
   FakePubSig fp fs = LWrapFail \/ CrackSignature.
+Proof.
+  intros fp fs H1 H2.
+  unfold FakePubSig.
+  rewrite H2.
+  unfold AnalyzeLeapSecurity.
+  unfold Pipe.
+  simpl.
+  rewrite correctAuth.
+  unfold Wrap.
+  case_eq (MVerify fp fs).
+  - intro H3.
+    unfold MVerify in H3.
+    rewrite <- signCorrect in H3.
+    destruct H3.
+    contradiction.
+    auto.
+  - auto.
+Qed.
