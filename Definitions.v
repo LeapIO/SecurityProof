@@ -35,7 +35,9 @@ Inductive unwrap_option :=
   | UFail.
 Inductive leap_option :=
   | LSome (res : leapout)
-  | LFail.
+  | LAuthFail
+  | LWrapFail
+  | LUnwrapFail.
 
 Parameter TextRelated: text -> text -> Prop.
 Definition UnrelatedSet l t := forall h,
@@ -48,7 +50,8 @@ Fixpoint as_set (l: list text) : textSet :=
   end.
 
 Parameter Safe: textSet -> text -> Prop.
-Parameter Rare: text -> Prop.
+Parameter CrackSignature: Prop.
+Parameter CrackHash: Prop.
 Parameter E_Sym D_Sym:
   key -> text -> text.
 Parameter E_Asym D_Asym:
@@ -65,8 +68,6 @@ Axiom nilSafe: forall t, Safe (as_set []) t.
 Axiom incSafe: forall t h l,
   (Safe l t) /\ ~(TextRelated t h) ->
   (Safe (add_set text l h) t).
-Axiom invRare: forall f t,
-  Rare (f t) -> Rare t.
 Axiom symEnDe:
   forall k t, D_Sym k (E_Sym k t) = t.
 Axiom symDeEn:
@@ -81,9 +82,9 @@ Axiom asymDeEn: forall kp t,
   E_Asym (pub kp) (D_Asym (pr kp) t) = t.
 Axiom rareConflictHash: forall t1 t2,
   Hash t1 = Hash t2 ->
-  (Rare t2 /\ Safe (as_set [Hash t1]) t2).
+  (CrackHash /\ Safe (as_set [Hash t1]) t2).
 Axiom signCorrect: forall kp t sig,
-  sig = Sign (pr kp) t \/ Rare sig <->
+  sig = Sign (pr kp) t \/ CrackSignature <->
   Verify (pub kp) t sig = true.
 Axiom SplitConcatenation:
   forall w, w = Splt (Conc w).

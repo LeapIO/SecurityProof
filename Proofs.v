@@ -120,7 +120,7 @@ Qed.
   Only correct password leads to ASome MEK, except rare cases
 *)
 Lemma someAuth: forall p,
-  Auth p = ASome MEK -> p = PWD \/ Rare p.
+  Auth p = ASome MEK -> p = PWD \/ CrackHash.
 Proof.
   intros p H1.
   apply NNPP.
@@ -141,23 +141,8 @@ Proof.
   clear H1.
   unfold H_MEK in H5.
   specialize (rareConflictHash MEK (D_Sym (Kdf p Salt) KEK_MEK)) as H6.
-  assert (H7: Rare (D_Sym (Kdf p Salt) KEK_MEK)).
-  {
-    assert (H8: Rare (D_Sym (Kdf p Salt) KEK_MEK) /\
-      Safe (as_set [Hash MEK]) (D_Sym (Kdf p Salt) KEK_MEK)).
-    {
-      auto.
-    }
-    apply proj1 in H8.
-    auto.
-  }
-  clear H5 H6.
-  specialize (invRare (fun x => D_Sym x KEK_MEK) (Kdf p Salt)) as H9.
-  specialize (invRare (fun x => Kdf x Salt) p) as H10.
-  assert (H11: Rare p).
-  {
-    auto.
-  }
+  destruct H6 as [H7 H8].
+  auto.
   contradiction.
 Qed.
 
@@ -165,7 +150,7 @@ Qed.
   Auth only returns MEK or fails, except rare cases
 *)
 Lemma anyAuth: forall p,
-  Auth p = ASome MEK \/ Auth p = AFail \/ Rare p.
+  Auth p = ASome MEK \/ Auth p = AFail \/ CrackHash.
 Proof.
   intro p.
   case_eq (Auth p).
@@ -205,23 +190,8 @@ Proof.
       clear H1.
       unfold H_MEK in HB.
       specialize (rareConflictHash MEK (D_Sym (Kdf p Salt) KEK_MEK)) as HC.
-      assert (HD: Rare (D_Sym (Kdf p Salt) KEK_MEK)).
-      {
-        assert (HP: Rare (D_Sym (Kdf p Salt) KEK_MEK) /\
-          Safe (as_set [Hash MEK]) (D_Sym (Kdf p Salt) KEK_MEK)).
-        {
-          auto.
-        }
-        apply proj1 in HP.
-        auto.
-      }
-      clear HB HC.
-      specialize (invRare (fun x => D_Sym x KEK_MEK) (Kdf p Salt)) as HE.
-      specialize (invRare (fun x => Kdf x Salt) p) as HF.
-      assert (HG: Rare p).
-      {
-        auto.
-      }
+      destruct HC as [HD HE].
+      auto.
       contradiction.
   - auto.
 Qed.
@@ -252,13 +222,11 @@ Qed.
 (*
   Only verified k+sig leads to WSome w, except rare cases
 *)
-Lemma someWrap: forall mek k sig n,
-  exists w, Wrap mek k sig n = WSome w ->
-  sig = MSign k \/ Rare sig.
+Lemma someWrap: forall mek k sig n w,
+  Wrap mek k sig n = WSome w ->
+  sig = MSign k \/ CrackSignature.
 Proof.
-  intros mek k sign n.
-  exists (E_Asym k (Conc {|mek := mek;
-                           nonce := n|})).
+  intros mek k sign n w.
   unfold Wrap.
   case_eq (MVerify k sign).
   - intros H1 H2.
@@ -324,3 +292,7 @@ Proof.
   trivial.
   trivial.
 Qed.
+
+Theorem anyFakePubSig: forall fp fs,
+  EnterPwd = PWD ->
+  FakePubSig fp fs = LWrapFail \/ CrackSignature.

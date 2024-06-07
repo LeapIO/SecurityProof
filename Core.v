@@ -62,7 +62,7 @@ Definition AnalyzeLeapSecurity
   let etoa := Pipe_t eout true in
   let aout := Auth_t (data etoa) in
   match aout with
-  | AFail => LFail
+  | AFail => LAuthFail
   | ASome mek =>
     let atow := Pipe_t mek true in
     let pubk := FetchPub_t in
@@ -73,12 +73,12 @@ Definition AnalyzeLeapSecurity
     let ntow := Pipe_t nonce false in
     let wout := Wrap_t (data atow) pubk sig nonce in
     match wout with
-    | WFail => LFail
+    | WFail => LWrapFail
     | WSome w =>
       let wtou := Pipe_t w false in
       let uout := Unwrap_t (data wtou) nonce in
       match uout with
-      | UFail => LFail
+      | UFail => LUnwrapFail
       | USome res =>
         let unsafe :=
           Union text (leaked etoa)
@@ -100,6 +100,17 @@ Definition NormalProcess :=
     EnterPwd
     FetchPub
     FetchSig
+    GenNonce
+    Auth
+    Wrap
+    Unwrap.
+
+Definition FakePubSig FakePub FakeSig :=
+  AnalyzeLeapSecurity 
+    Pipe
+    EnterPwd
+    FakePub
+    FakeSig
     GenNonce
     Auth
     Wrap
