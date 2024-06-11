@@ -87,7 +87,7 @@ Lemma onewayHash: forall t,
   Safe (as_set [Hash t]) t.
 Proof.
   intro t.
-  apply rareConflictHash.
+  apply conflictHash.
   trivial.
 Qed.
 
@@ -140,7 +140,7 @@ Proof.
   }
   clear H1.
   unfold H_MEK in H5.
-  specialize (rareConflictHash MEK (D_Sym (Kdf p Salt) KEK_MEK)) as H6.
+  specialize (conflictHash MEK (D_Sym (Kdf p Salt) KEK_MEK)) as H6.
   destruct H6 as [H7 H8].
   auto.
   contradiction.
@@ -189,7 +189,7 @@ Proof.
       }
       clear H1.
       unfold H_MEK in HB.
-      specialize (rareConflictHash MEK (D_Sym (Kdf p Salt) KEK_MEK)) as HC.
+      specialize (conflictHash MEK (D_Sym (Kdf p Salt) KEK_MEK)) as HC.
       destruct HC as [HD HE].
       auto.
       contradiction.
@@ -261,14 +261,14 @@ Qed.
 Theorem correctLeapSecurity:
   let w := E_Asym (pub DK) (
            Conc {|mek := MEK;
-                  nonce := GenNonce|})
+                  nonce := FetchNonce|})
   in EnterPwd = PWD ->
      FetchPub = pub DK ->
      FetchSig = SIG ->
   NormalProcess =
     LSome {|final := MEK;
             unsafe := as_set
-             [w; GenNonce; SIG; pub DK]|}.
+             [w; FetchNonce; SIG; pub DK]|}.
 Proof.
   intros w H1 H2 H3.
   unfold NormalProcess.
@@ -288,11 +288,13 @@ Proof.
   unfold add_set.
   rewrite ?Empty_set_zero'.
   unfold Ensembles.Add.
-  auto 10 with sets.
+  auto 11 with sets.
   trivial.
   trivial.
 Qed.
 
+(*
+  TODO: Analyze how much infomation an attacker can get
 Theorem anyFakePubSig: forall fp fs,
   fs <> MSign fp ->
   EnterPwd = PWD ->
@@ -315,3 +317,4 @@ Proof.
     auto.
   - auto.
 Qed.
+*)

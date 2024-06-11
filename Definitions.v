@@ -35,9 +35,9 @@ Inductive unwrap_option :=
   | UFail.
 Inductive leap_option :=
   | LSome (res : leapout)
-  | LAuthFail
-  | LWrapFail
-  | LUnwrapFail.
+  | LAuthFail (unsafe: textSet)
+  | LWrapFail (unsafe: textSet)
+  | LUnwrapFail (unsafe: textSet).
 
 Parameter TextRelated: text -> text -> Prop.
 Definition UnrelatedSet l t := forall h,
@@ -80,7 +80,7 @@ Axiom asymEnDe: forall kp t,
   D_Asym (pr kp) (E_Asym (pub kp) t) = t.
 Axiom asymDeEn: forall kp t,
   E_Asym (pub kp) (D_Asym (pr kp) t) = t.
-Axiom rareConflictHash: forall t1 t2,
+Axiom conflictHash: forall t1 t2,
   Hash t1 = Hash t2 ->
   (CrackHash /\ Safe (as_set [Hash t1]) t2).
 Axiom signCorrect: forall kp t sig,
