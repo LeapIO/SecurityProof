@@ -34,15 +34,13 @@ Lemma unionTwoUnrelatedSafe:
 Proof.
   intros ll1 ll2 t l1 l2 H.
   apply unrelatedSafe.
-  apply Union_preserves_Finite.
-  auto. auto.
+  now apply Union_preserves_Finite.
   intros h H3.
   destruct H as [H1 H2].
   specialize (H1 h).
   specialize (H2 h).
   specialize (Union_inv text ll1 ll2 h) as H4.
-  elim H4.
-  auto. auto. auto.
+  now elim H4.
 Qed.
 
 Lemma unionUnrelatedSafe:
@@ -87,8 +85,7 @@ Lemma onewayHash: forall t,
   Safe (as_set [Hash t]) t.
 Proof.
   intro t.
-  apply conflictHash.
-  trivial.
+  now apply conflictHash.
 Qed.
 
 (*
@@ -101,19 +98,15 @@ Proof.
   assert (H1: D_Sym KEK KEK_MEK = MEK).
   {
     unfold KEK_MEK.
-    rewrite symEnDe.
-    reflexivity.
+    now rewrite symEnDe.
   }
   rewrite H1.
   assert (H2: beq_text (Hash MEK) H_MEK = true).
   {
     fold H_MEK.
-    trivial.
-    rewrite Nat.eqb_eq.
-    reflexivity.
+    now rewrite Nat.eqb_eq.
   }
-  rewrite H2.
-  reflexivity.
+  now rewrite H2.
 Qed.
 
 (*
@@ -141,9 +134,16 @@ Proof.
   clear H1.
   unfold H_MEK in H5.
   specialize (conflictHash MEK (D_Sym (Kdf p Salt) KEK_MEK)) as H6.
-  destruct H6 as [H7 H8].
-  auto.
-  contradiction.
+  now destruct H6 as [H7 H8].
+Qed.
+
+Lemma crackAuth: forall p,
+  p <> PWD /\ Auth p = ASome MEK -> CrackHash.
+Proof.
+  intros p H1.
+  destruct H1 as [H2 H3].
+  apply someAuth in H3.
+  now destruct H3 as [H4 | H5].
 Qed.
 
 (*
@@ -190,9 +190,7 @@ Proof.
       clear H1.
       unfold H_MEK in HB.
       specialize (conflictHash MEK (D_Sym (Kdf p Salt) KEK_MEK)) as HC.
-      destruct HC as [HD HE].
-      auto.
-      contradiction.
+      now destruct HC as [HD HE].
   - auto.
 Qed.
 
@@ -215,8 +213,7 @@ Proof.
     apply signCorrect.
     auto.
   }
-  rewrite H2.
-  auto.
+  now rewrite H2.
 Qed.
 
 (*

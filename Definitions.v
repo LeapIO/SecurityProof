@@ -40,8 +40,8 @@ Inductive leap_option :=
   | LUnwrapFail (unsafe: textSet).
 
 Parameter TextRelated: text -> text -> Prop.
-Definition UnrelatedSet l t := forall h,
-  (in_set text l h) -> ~(TextRelated t h).
+Definition UnrelatedSet s t := forall h,
+  (in_set text s h) -> ~(TextRelated t h).
 
 Fixpoint as_set (l: list text) : textSet :=
   match l with
@@ -65,9 +65,9 @@ Parameter Conc: wrapped -> text.
 Parameter Splt: text -> wrapped.
 
 Axiom nilSafe: forall t, Safe (as_set []) t.
-Axiom incSafe: forall t h l,
-  (Safe l t) /\ ~(TextRelated t h) ->
-  (Safe (add_set text l h) t).
+Axiom incSafe: forall t h s,
+  (Safe s t) /\ ~(TextRelated t h) ->
+  (Safe (add_set text s h) t).
 Axiom symEnDe:
   forall k t, D_Sym k (E_Sym k t) = t.
 Axiom symDeEn:
