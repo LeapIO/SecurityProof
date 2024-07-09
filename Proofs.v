@@ -61,7 +61,7 @@ Proof.
     apply incSafe.
     split.
     apply H1.
-    assert (H4: UnrelatedSet (add_set text l' m) t -> UnrelatedSet l' t).
+    assert (H4: UnrelatedSet (add_set l' m) t -> UnrelatedSet l' t).
     {
       unfold UnrelatedSet.
       intros A h.
@@ -70,7 +70,7 @@ Proof.
       auto.
     }
     auto.
-    assert (H5: UnrelatedSet (add_set text l' m) t -> ~ TextRelated t m).
+    assert (H5: UnrelatedSet (add_set l' m) t -> ~ TextRelated t m).
     {
       unfold UnrelatedSet.
       intros C.

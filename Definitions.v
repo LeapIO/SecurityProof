@@ -5,8 +5,8 @@ Import ListNotations.
 Definition text := nat.
 
 Module ListEnsemble.
-  Definition in_set := Ensembles.In.
-  Definition add_set := Ensembles.Add.
+  Definition in_set := Ensembles.In text.
+  Definition add_set := Ensembles.Add text.
 End ListEnsemble.
 Import ListEnsemble.
 
@@ -41,15 +41,18 @@ Inductive leap_option :=
 
 Parameter TextRelated: text -> text -> Prop.
 Definition UnrelatedSet s t := forall h,
-  (in_set text s h) -> ~(TextRelated t h).
+  (in_set s h) -> ~(TextRelated t h).
 
 Fixpoint as_set (l: list text) : textSet :=
   match l with
   | [] => Empty_set text
-  | x :: xs => add_set text (as_set xs) x
+  | x :: xs => add_set (as_set xs) x
   end.
+Definition empty_set := as_set [].
 
-Parameter Safe: textSet -> text -> Prop.
+Parameter EasyInfer: textSet -> textSet.
+Definition Safe s t := ~(in_set (EasyInfer s) t).
+
 Parameter CrackSignature: Prop.
 Parameter CrackHash: Prop.
 Parameter E_Sym D_Sym:
@@ -64,18 +67,27 @@ Parameter Verify:
 Parameter Conc: wrapped -> text.
 Parameter Splt: text -> wrapped.
 
-Axiom nilSafe: forall t, Safe (as_set []) t.
+Axiom nilInfer: EasyInfer empty_set = empty_set.
+Lemma nilSafe: forall t, Safe empty_set t.
+Proof.
+  intro t.
+  unfold Safe.
+  rewrite nilInfer.
+  intros H.
+  inversion H.
+Qed.
 Axiom incSafe: forall t h s,
   (Safe s t) /\ ~(TextRelated t h) ->
-  (Safe (add_set text s h) t).
+  (Safe (add_set s h) t).
+
 Axiom symEnDe:
   forall k t, D_Sym k (E_Sym k t) = t.
 Axiom symDeEn:
   forall k t, E_Sym k (D_Sym k t) = t.
 Axiom symTextSafety: forall k t,
-  Safe (as_set [E_Sym k t]) t .
+  Safe (as_set [E_Sym k t]) t.
 Axiom asymKeySafety: forall kp,
-  Safe (as_set [pr kp]) (pub kp) .
+  Safe (as_set [pr kp]) (pub kp).
 Axiom asymEnDe: forall kp t,
   D_Asym (pr kp) (E_Asym (pub kp) t) = t.
 Axiom asymDeEn: forall kp t,
