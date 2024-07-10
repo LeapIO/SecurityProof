@@ -81,13 +81,6 @@ Proof.
     auto.
 Qed.
 
-Lemma onewayHash: forall t,
-  Safe (as_set [Hash t]) t.
-Proof.
-  intro t.
-  now apply conflictHash.
-Qed.
-
 (*
   A correct password is able to unlock the MEK
 *)
@@ -110,19 +103,15 @@ Proof.
 Qed.
 
 (*
-  Only correct password leads to ASome MEK, except cracked cases
+  Only correct password can get something from Auth, except cracked cases
 *)
-Lemma someAuth: forall p,
-  Auth p = ASome MEK -> p = PWD \/ CrackHash.
+Lemma getSomethingFromAuth: forall p k,
+  Auth p = ASome k -> p = PWD \/ CrackHash.
 Proof.
-  intros p H1.
-  apply NNPP.
-  intro H2.
-  apply not_or_and in H2.
-  destruct H2 as [H3 H4].
-  unfold Auth in H1.
-  assert (H5: Hash (D_Sym (Kdf p Salt) KEK_MEK) = H_MEK).
+  intros p k H1.
+  assert (H2: Hash (D_Sym (Kdf p Salt) KEK_MEK) = H_MEK).
   {
+    unfold Auth in H1.
     case_eq (beq_text (Hash (D_Sym (Kdf p Salt) KEK_MEK)) H_MEK).
     - intro HP.
       rewrite Nat.eqb_eq in HP.
@@ -132,9 +121,25 @@ Proof.
       inversion H1.
   }
   clear H1.
-  unfold H_MEK in H5.
-  specialize (conflictHash MEK (D_Sym (Kdf p Salt) KEK_MEK)) as H6.
-  now destruct H6 as [H7 H8].
+  unfold H_MEK in H2.
+  apply conflictHash in H2.
+  inversion H2 as [H3 | H4].
+  - assert (H5: KEK_MEK = E_Sym (Kdf p Salt) MEK).
+    {
+      rewrite <- H3.
+      specialize (symDeEn (Kdf p Salt) KEK_MEK) as H6.
+      auto.
+    }
+    unfold KEK_MEK in H5.
+    apply bijectiveSym in H5.
+    unfold KEK in H5.
+    destruct (Nat.eq_dec p PWD) as [Heq | Hneq].
+    auto.
+    specialize (injectiveKdf p PWD Salt) as H6.
+    rewrite H5 in H6.
+    apply H6 in Hneq.
+    contradiction.
+  - auto.
 Qed.
 
 Lemma crackAuth: forall p,
@@ -142,7 +147,7 @@ Lemma crackAuth: forall p,
 Proof.
   intros p H1.
   destruct H1 as [H2 H3].
-  apply someAuth in H3.
+  apply getSomethingFromAuth in H3.
   now destruct H3 as [H4 | H5].
 Qed.
 
@@ -176,21 +181,8 @@ Proof.
       auto.
     * intro HA.
       rewrite Nat.eqb_neq in HA.
-      unfold Auth in H1.
-      assert (HB: Hash (D_Sym (Kdf p Salt) KEK_MEK) = H_MEK).
-      {
-        case_eq (beq_text (Hash (D_Sym (Kdf p Salt) KEK_MEK)) H_MEK).
-        + intro HP.
-          rewrite Nat.eqb_eq in HP.
-          auto.
-        + intro HP.
-          rewrite HP in H1.
-          inversion H1.
-      }
-      clear H1.
-      unfold H_MEK in HB.
-      specialize (conflictHash MEK (D_Sym (Kdf p Salt) KEK_MEK)) as HC.
-      now destruct HC as [HD HE].
+      apply getSomethingFromAuth in H1.
+      now destruct H1 as [HB | HC].
   - auto.
 Qed.
 

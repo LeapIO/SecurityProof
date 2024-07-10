@@ -50,8 +50,8 @@ Fixpoint as_set (l: list text) : textSet :=
   end.
 Definition empty_set := as_set [].
 
-Parameter EasyInfer: textSet -> textSet.
-Definition Safe s t := ~(in_set (EasyInfer s) t).
+Parameter Infer: textSet -> textSet.
+Definition Safe s t := ~(in_set (Infer s) t).
 
 Parameter CrackSignature: Prop.
 Parameter CrackHash: Prop.
@@ -67,7 +67,7 @@ Parameter Verify:
 Parameter Conc: wrapped -> text.
 Parameter Splt: text -> wrapped.
 
-Axiom nilInfer: EasyInfer empty_set = empty_set.
+Axiom nilInfer: Infer empty_set = empty_set.
 Lemma nilSafe: forall t, Safe empty_set t.
 Proof.
   intro t.
@@ -90,11 +90,12 @@ Axiom asymKeySafety: forall kp,
   Safe (as_set [pr kp]) (pub kp).
 Axiom asymEnDe: forall kp t,
   D_Asym (pr kp) (E_Asym (pub kp) t) = t.
-Axiom asymDeEn: forall kp t,
-  E_Asym (pub kp) (D_Asym (pr kp) t) = t.
 Axiom conflictHash: forall t1 t2,
-  Hash t1 = Hash t2 ->
-  (CrackHash /\ Safe (as_set [Hash t1]) t2).
+  Hash t1 = Hash t2 -> (t1 = t2 \/ CrackHash).
+Axiom injectiveKdf: forall p1 p2 salt,
+  p1 <> p2 -> Kdf p1 salt <> Kdf p2 salt.
+Axiom bijectiveSym: forall k1 k2 t,
+  k1 = k2 <-> E_Sym k1 t = E_Sym k2 t.
 Axiom signCorrect: forall kp t sig,
   sig = Sign (pr kp) t \/ CrackSignature <->
   Verify (pub kp) t sig = true.
