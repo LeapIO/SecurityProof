@@ -5,8 +5,12 @@ Import ListNotations.
 Definition text := nat.
 
 Module ListEnsemble.
-  Definition in_set := Ensembles.In text.
-  Definition add_set := Ensembles.Add text.
+  Notation "t @ s" := (Ensembles.In text s t)
+    (at level 60, right associativity).
+  Notation "t !@ s" := (~(t @ s))
+    (at level 60, right associativity).
+  Notation "t ++ s" := (Ensembles.Add text s t)
+    (at level 60, right associativity).
 End ListEnsemble.
 Import ListEnsemble.
 
@@ -40,18 +44,24 @@ Inductive leap_option :=
   | LUnwrapFail (unsafe: textSet).
 
 Parameter TextRelated: text -> text -> Prop.
+Notation "x ~ y" := (TextRelated x y)
+  (at level 60, right associativity).
+Notation "x !~ y" := (~(x ~ y))
+  (at level 60, right associativity).
 Definition UnrelatedSet s t := forall h,
-  (in_set s h) -> ~(TextRelated t h).
+  h @ s -> t !~ h.
 
 Fixpoint as_set (l: list text) : textSet :=
   match l with
   | [] => Empty_set text
-  | x :: xs => add_set (as_set xs) x
+  | x :: xs => x ++ (as_set xs)
   end.
-Definition empty_set := as_set [].
+Notation "{ }" := (as_set []).
+Notation "{ x ; .. ; y }" :=
+  (as_set (cons x .. (cons y nil) ..)).
 
 Parameter Infer: textSet -> textSet.
-Definition Safe s t := ~(in_set (Infer s) t).
+Definition Safe s t := t !@ (Infer s).
 
 Parameter CrackSignature: Prop.
 Parameter CrackHash: Prop.
@@ -67,8 +77,8 @@ Parameter Verify:
 Parameter Conc: wrapped -> text.
 Parameter Splt: text -> wrapped.
 
-Axiom nilInfer: Infer empty_set = empty_set.
-Lemma nilSafe: forall t, Safe empty_set t.
+Axiom nilInfer: Infer {} = {}.
+Lemma nilSafe: forall t, Safe {} t.
 Proof.
   intro t.
   unfold Safe.
@@ -77,17 +87,17 @@ Proof.
   inversion H.
 Qed.
 Axiom incSafe: forall t h s,
-  (Safe s t) /\ ~(TextRelated t h) ->
-  (Safe (add_set s h) t).
+  (Safe s t) /\ (t !~ h) ->
+  (Safe (h ++ s) t).
 
 Axiom symEnDe:
   forall k t, D_Sym k (E_Sym k t) = t.
 Axiom symDeEn:
   forall k t, E_Sym k (D_Sym k t) = t.
-Axiom symTextSafety: forall k t,
-  Safe (as_set [E_Sym k t]) t.
+Axiom symSafety: forall k t,
+  Safe {E_Sym k t} t.
 Axiom asymKeySafety: forall kp,
-  Safe (as_set [pr kp]) (pub kp).
+  Safe {pr kp} (pub kp).
 Axiom asymEnDe: forall kp t,
   D_Asym (pr kp) (E_Asym (pub kp) t) = t.
 Axiom conflictHash: forall t1 t2,
@@ -99,5 +109,5 @@ Axiom bijectiveSym: forall k1 k2 t,
 Axiom signCorrect: forall kp t sig,
   sig = Sign (pr kp) t \/ CrackSignature <->
   Verify (pub kp) t sig = true.
-Axiom SplitConcatenation:
+Axiom serialCorrect:
   forall w, w = Splt (Conc w).

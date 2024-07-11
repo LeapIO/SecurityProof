@@ -20,9 +20,9 @@ Definition SIG := MSign (pub DK).
 Definition Pipe t (trusted:bool) :=
   if trusted 
     then {|data := t;
-           leaked := (as_set [])|}
+           leaked := {} |}
     else {|data := t;
-           leaked := (as_set [t])|}.
+           leaked := {t} |}.
 
 Parameter EnterPwd: password.
 Parameter FetchPub: key.

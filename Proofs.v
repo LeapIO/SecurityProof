@@ -19,7 +19,6 @@ Proof.
     intros h H2.
     specialize (H1 h).
     specialize (Add_intro1 text l' m h) as H3.
-    unfold in_set in *.
     auto.
     specialize (H1 m).
     specialize (Add_intro2 text l' m) as H4.
@@ -61,16 +60,15 @@ Proof.
     apply incSafe.
     split.
     apply H1.
-    assert (H4: UnrelatedSet (add_set l' m) t -> UnrelatedSet l' t).
+    assert (H4: UnrelatedSet (m ++ l') t -> UnrelatedSet l' t).
     {
       unfold UnrelatedSet.
       intros A h.
       specialize (Add_intro1 text l' m h) as B.
-      unfold in_set in *.
       auto.
     }
     auto.
-    assert (H5: UnrelatedSet (add_set l' m) t -> ~ TextRelated t m).
+    assert (H5: UnrelatedSet (m ++ l') t -> t !~ m).
     {
       unfold UnrelatedSet.
       intros C.
@@ -233,7 +231,7 @@ Proof.
   intros w n H1.
   unfold Unwrap.
   specialize (asymEnDe DK (Conc w)) as H2.
-  specialize (SplitConcatenation w) as H3.
+  specialize (serialCorrect w) as H3.
   assert (H4: nonce (Splt (D_Asym (pr DK) (E_Asym (pub DK) (Conc w)))) = n).
   {
     rewrite H2.
@@ -256,8 +254,8 @@ Theorem correctLeapSecurity:
      FetchSig = SIG ->
   NormalProcess =
     LSome {|final := MEK;
-            unsafe := as_set
-             [w; FetchNonce; SIG; pub DK]|}.
+            unsafe := 
+             {w; FetchNonce; SIG; pub DK}|}.
 Proof.
   intros w H1 H2 H3.
   unfold NormalProcess.
@@ -274,7 +272,6 @@ Proof.
   f_equal.
   f_equal.
   rewrite ?Empty_set_zero.
-  unfold add_set.
   rewrite ?Empty_set_zero'.
   unfold Ensembles.Add.
   auto 11 with sets.
