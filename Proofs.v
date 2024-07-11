@@ -29,7 +29,7 @@ Lemma unionTwoUnrelatedSafe:
   forall s1 s2 t, Finite text s1 ->
   Finite text s2 ->
   UnrelatedSet s1 t /\ UnrelatedSet s2 t ->
-  Safe (Union text s1 s2) t.
+  Safe (s1 ∪ s2) t.
 Proof.
   intros ll1 ll2 t l1 l2 H.
   apply unrelatedSafe.
@@ -46,7 +46,7 @@ Lemma unionUnrelatedSafe:
   forall s s' t, Finite text s ->
   Finite text s' -> UnrelatedSet s' t ->
   Safe s t ->
-  Safe (Union text s s') t.
+  Safe (s ∪ s') t.
 Proof.
   intros ll1 ll2 t l1 l2 H H0.
   induction l2 as [| l' l'f H1 m H2].
@@ -60,7 +60,7 @@ Proof.
     apply incSafe.
     split.
     apply H1.
-    assert (H4: UnrelatedSet (m ++ l') t -> UnrelatedSet l' t).
+    assert (H4: UnrelatedSet (m :: l') t -> UnrelatedSet l' t).
     {
       unfold UnrelatedSet.
       intros A h.
@@ -68,7 +68,7 @@ Proof.
       auto.
     }
     auto.
-    assert (H5: UnrelatedSet (m ++ l') t -> t !~ m).
+    assert (H5: UnrelatedSet (m :: l') t -> t ≁ m).
     {
       unfold UnrelatedSet.
       intros C.

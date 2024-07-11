@@ -73,17 +73,14 @@ Definition AnalyzeLeapSecurity
     let nonce := FetchNonce_t in
     let ntow := Pipe_t nonce false in
     let unsafe2 :=
-         Union text unsafe1
-          (Union text (leaked atow)
-           (Union text (leaked ptow)
-            (Union text (leaked stow)
-                         (leaked ntow)))) in
+         unsafe1 ∪ (leaked atow) ∪ (leaked ptow) ∪
+            (leaked stow) ∪ (leaked ntow) in
     let wout := Wrap_t (data atow) pubk sig nonce in
     match wout with
     | WFail => LWrapFail unsafe2
     | WSome w =>
       let wtou := Pipe_t w false in
-      let unsafe3 := Union text unsafe2 (leaked wtou) in
+      let unsafe3 := unsafe2 ∪ (leaked wtou) in
       let uout := Unwrap_t (data wtou) nonce in
       match uout with
       | UFail => LUnwrapFail unsafe3

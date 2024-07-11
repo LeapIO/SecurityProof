@@ -5,14 +5,16 @@ Import ListNotations.
 Definition text := nat.
 
 Module ListEnsemble.
-  Notation "t @ s" := (Ensembles.In text s t)
+  Notation "t ∈ s" := (Ensembles.In text s t)
     (at level 60, right associativity).
-  Notation "t !@ s" := (~(t @ s))
+  Notation "t ∉ s" := (~(t ∈ s))
     (at level 60, right associativity).
-  Notation "t ++ s" := (Ensembles.Add text s t)
+  Notation "t :: s" := (Ensembles.Add text s t)
     (at level 60, right associativity).
 End ListEnsemble.
 Import ListEnsemble.
+Notation "a ∪ b" := (Union text a b)
+    (at level 60, right associativity).
 
 Definition key := text.
 Definition salt := text.
@@ -46,22 +48,22 @@ Inductive leap_option :=
 Parameter TextRelated: text -> text -> Prop.
 Notation "x ~ y" := (TextRelated x y)
   (at level 60, right associativity).
-Notation "x !~ y" := (~(x ~ y))
+Notation "x ≁ y" := (~(x ~ y))
   (at level 60, right associativity).
 Definition UnrelatedSet s t := forall h,
-  h @ s -> t !~ h.
+  h ∈ s -> t ≁ h.
 
 Fixpoint as_set (l: list text) : textSet :=
   match l with
   | [] => Empty_set text
-  | x :: xs => x ++ (as_set xs)
+  | cons x xs => x :: (as_set xs)
   end.
 Notation "{ }" := (as_set []).
 Notation "{ x ; .. ; y }" :=
   (as_set (cons x .. (cons y nil) ..)).
 
 Parameter Infer: textSet -> textSet.
-Definition Safe s t := t !@ (Infer s).
+Definition Safe s t := t ∉ (Infer s).
 
 Parameter CrackSignature: Prop.
 Parameter CrackHash: Prop.
@@ -87,8 +89,8 @@ Proof.
   inversion H.
 Qed.
 Axiom incSafe: forall t h s,
-  (Safe s t) /\ (t !~ h) ->
-  (Safe (h ++ s) t).
+  (Safe s t) /\ (t ≁ h) ->
+  (Safe (h :: s) t).
 
 Axiom symEnDe:
   forall k t, D_Sym k (E_Sym k t) = t.
