@@ -19,7 +19,6 @@ Notation "a ∪ b" := (Union text a b)
 Definition key := text.
 Definition salt := text.
 Definition password := text.
-Definition ciphertext := text.
 Definition textSet := Ensemble text.
 Definition beq_text := Nat.eqb.
 
