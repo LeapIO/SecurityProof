@@ -1,4 +1,4 @@
-From LeapSecurity Require Export Core.
+From LeapSecurity Require Export Definitions.
 Require Import Coq.Sets.Finite_sets_facts.
 Require Import Coq.Lists.List.
 Import ListNotations.
@@ -19,6 +19,40 @@ Definition snd (r: relation) : text :=
 	| pair x y => y
 	end.
 
+(* Check if two relations are equal *)
+Definition eq_relation (r1 r2 : relation) : bool :=
+  match r1, r2 with
+  | pair x1 y1, pair x2 y2 => (beq_text x1 x2) && (beq_text y1 y2)
+  end.
+
+(* Check if the fst and snd part of pair are equal *)
+Definition id_pair (r: relation) : bool :=
+  match r with
+  | pair x y => (beq_text x y)
+  end.
+
+(* Check if a relation exists in a list of relations *)
+Fixpoint in_list_relation (r: relation) (l: list relation) : bool :=
+  match id_pair r with
+  | true => true
+  | false =>
+    match l with
+    | [] => false
+    | h :: t => if eq_relation r h then true else in_list_relation r t
+    end
+  end.
+
+(* Check if all elements of list a are in list b *)
+Fixpoint all_in_relation (a b: list relation) : bool :=
+  match a with
+  | [] => true
+  | h :: t => if in_list_relation h b then all_in_relation t b else false
+  end.
+
+(* Compare two lists of relations for content equality *)
+Definition list_eq_relation (a b: list relation) : bool :=
+  all_in_relation a b && all_in_relation b a.
+
 (* For x, find all <x, *> pairs *)
 Fixpoint get_children (l : relations) (x: text) : relations :=
 	match l with
@@ -37,20 +71,19 @@ Fixpoint remove_duplicates (l : list text) : list text :=
     else h :: remove_duplicates t
   end.
 
-(* Collect all nodes that appear in the first position of any pair, with duplicates removed *)
+(* Collect all nodes that appear in the first position of any pair *)
 Fixpoint collect_fst (l : relations) : list text :=
   match l with
   | [] => []
-  | h :: t => remove_duplicates (fst h :: collect_fst t)
+  | h :: t => (fst h :: collect_fst t)
   end.
 
-(* Collect all nodes that appear in the second position of any pair, with duplicates removed *)
+(* Collect all nodes that appear in the second position of any pair *)
 Fixpoint collect_snd (l : relations) : list text :=
   match l with
   | [] => []
-  | h :: t => remove_duplicates (snd h :: collect_snd t)
+  | h :: t => (snd h :: collect_snd t)
   end.
-
 
 (* Find the root nodes: those that appear in the first position but not in the second *)
 Definition find_roots (l : relations) : list text :=
@@ -63,7 +96,6 @@ Definition find_leaves (l : relations) : list text :=
   let fst_nodes := collect_fst l in
   let snd_nodes := collect_snd l in
   filter (fun x => negb (existsb (beq_text x) fst_nodes)) snd_nodes.  
-
 
 Fixpoint list_length {A : Type} (l : list A) : nat :=
 match l with
@@ -90,7 +122,20 @@ Fixpoint find_reachable_leaves_aux (l: relations) (x: text) (visited: list text)
   end.
 
 Definition find_reachable_leaves (l: relations) (x: text) : list text :=
-  remove_duplicates (find_reachable_leaves_aux l x [] (list_length l)).
+  find_reachable_leaves_aux l x [] (list_length l).
+
+(*
+  Get all pairs <a,b>, where a is the root and b is the leaf.
+*)
+Definition get_root_leaf_pairs (l: relations) : list relation :=
+  let roots := find_roots l in
+  let leaves := find_leaves l in
+  fold_left (fun acc root =>
+               let reachable_leaves := find_reachable_leaves l root in
+               fold_left (fun acc' leaf =>
+                            if existsb (beq_text leaf) leaves then (pair root leaf) :: acc'
+                            else acc') reachable_leaves acc)
+            roots [].
 
 (* Test definitions *)
 Definition test_text1 := 1.
@@ -128,6 +173,9 @@ Eval compute in (get_children test_relations test_text1).
 Eval compute in (find_roots test_relations).
 Eval compute in (find_leaves test_relations).
 Eval compute in (find_reachable_leaves test_relations test_text1).
+Eval compute in (get_root_leaf_pairs test_relations).
+Eval compute in (list_eq_relation test_relations  ((pair test_text3 test_text6) :: test_relations)).
+Eval compute in (list_eq_relation test_relations  ((pair test_text3 test_text5) :: test_relations)).
 
 Definition add_relation_2 (rel : relations) (x r: text) :=
   (pair x r) :: rel.

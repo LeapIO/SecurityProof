@@ -1,4 +1,4 @@
-From LeapSecurity Require Export Definitions.
+From LeapSecurity Require Export Relation.
 Require Import Coq.Sets.Ensembles.
 Require Import Coq.Lists.List.
 Import ListNotations.
@@ -34,6 +34,12 @@ Definition Auth PWD_t :=
   let MEK_t := D_Sym KEK_t KEK_MEK in
   if (beq_text (Hash MEK_t) H_MEK)
     then ASome MEK_t else AFail.
+
+Definition Auth_rel rel PWD_t :=
+  let (KEK_t, rel1) := Kdf_rel rel PWD_t Salt in
+  let (MEK_t, rel2) := D_Sym_rel rel1 KEK_t KEK_MEK in
+  if (beq_text (Hash MEK_t) H_MEK)
+    then (ASome MEK_t, rel2) else (AFail, rel2).
 
 Definition Wrap mek k sig n :=
   if (MVerify k sig)
