@@ -12,6 +12,13 @@ Definition KEK := Kdf PWD Salt.
 Definition KEK_MEK := E_Sym KEK MEK.
 Definition H_MEK := Hash MEK.
 
+Definition PWD_with_id := {| identity := 1; content := PWD|}.
+Definition Salt_with_id := {| identity := 2; content := Salt|}.
+Definition MEK_with_id := {| identity := 3; content := MEK|}.
+Definition KEK_with_id := {| identity := 4; content := KEK|}.
+Definition KEK_MEK_with_id := {| identity := 5; content := KEK_MEK|}.
+Definition H_MEK_with_id := {| identity := 6; content := H_MEK|}.
+
 Definition MSign t := Sign (pr MK) t.
 Definition MVerify t sig :=
   Verify (pub MK) t sig.
@@ -35,11 +42,15 @@ Definition Auth PWD_t :=
   if (beq_text (Hash MEK_t) H_MEK)
     then ASome MEK_t else AFail.
 
-Definition Auth_rel rel PWD_t :=
-  let (KEK_t, rel1) := Kdf_rel rel PWD_t Salt in
-  let (MEK_t, rel2) := D_Sym_rel rel1 KEK_t KEK_MEK in
-  if (beq_text (Hash MEK_t) H_MEK)
-    then (ASome MEK_t, rel2) else (AFail, rel2).
+Inductive auth_with_id_option :=
+  | ASome_with_id (mek : text_with_id)
+  | AFail_with_id.
+
+Definition Auth_rel rel PWD_t_with_id idcnt :=
+  let '(KEK_t_with_id, rel1, idcnt1) := Kdf_rel rel PWD_t_with_id Salt_with_id idcnt in
+  let '(MEK_t_with_id, rel2, idcnt2) := D_Sym_rel rel1 KEK_t_with_id KEK_MEK_with_id idcnt1 in
+  if (beq_text (Hash (content MEK_t_with_id)) (content H_MEK_with_id))
+    then (ASome_with_id MEK_t_with_id, rel2, idcnt) else (AFail_with_id, rel2, idcnt).
 
 Definition Wrap mek k sig n :=
   if (MVerify k sig)
