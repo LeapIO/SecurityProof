@@ -8,6 +8,8 @@ Record text_with_id := {identity: nat;
                         content: text}.
 Record wrapped_with_id := {mek_with_id: text_with_id;
                            nonce_with_id: text_with_id}.
+Record key_pair_with_id := {pub_with_id: text_with_id;
+                            pr_with_id: text_with_id}.
 
 Definition beq_text_id (x y: text_with_id) : bool :=
   Nat.eqb (identity x) (identity y).

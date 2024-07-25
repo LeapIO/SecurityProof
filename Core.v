@@ -12,17 +12,32 @@ Definition KEK := Kdf PWD Salt.
 Definition KEK_MEK := E_Sym KEK MEK.
 Definition H_MEK := Hash MEK.
 
+Definition ID_BASE := 100.
+
 Definition PWD_with_id := {| identity := 1; content := PWD|}.
 Definition Salt_with_id := {| identity := 2; content := Salt|}.
 Definition MEK_with_id := {| identity := 3; content := MEK|}.
 Definition KEK_with_id := {| identity := 4; content := KEK|}.
 Definition KEK_MEK_with_id := {| identity := 5; content := KEK_MEK|}.
 Definition H_MEK_with_id := {| identity := 6; content := H_MEK|}.
+Definition MK_with_id := {|
+  pub_with_id := {| identity := 7; content := pub MK|};
+  pr_with_id := {| identity := 8; content := pr MK|}|}.
+Definition DK_with_id := {|
+  pub_with_id := {| identity := 9; content := pub DK|};
+  pr_with_id := {| identity := 10; content := pr DK|}|}.
 
 Definition MSign t := Sign (pr MK) t.
 Definition MVerify t sig :=
   Verify (pub MK) t sig.
 Definition SIG := MSign (pub DK).
+
+Definition MSign_rel rel t idcnt :=
+  let '(sig_with_id, rel1, idcnt1) := Sign_rel rel (pr_with_id DK_with_id) t idcnt in
+  (sig_with_id, rel1, idcnt1).
+
+Definition MVerify_rel t sig :=
+  Verify (content (pub_with_id MK_with_id)) (content t) (content sig).
 
 Definition Pipe t (trusted:bool) :=
   if trusted 
@@ -56,7 +71,8 @@ Definition Auth_rel rel PWD_t_with_id idcnt :=
   let '(KEK_t_with_id, rel1, idcnt1) := Kdf_rel rel PWD_t_with_id Salt_with_id idcnt in
   let '(MEK_t_with_id, rel2, idcnt2) := D_Sym_rel rel1 KEK_t_with_id KEK_MEK_with_id idcnt1 in
   if (beq_text (Hash (content MEK_t_with_id)) (content H_MEK_with_id))
-    then (ASome_with_id MEK_t_with_id, rel2, idcnt) else (AFail_with_id, rel2, idcnt).
+    then (ASome_with_id MEK_t_with_id, rel2, idcnt2)
+  else (AFail_with_id, rel, idcnt).
 
 Definition Wrap mek k sig n :=
   if (MVerify k sig)
@@ -65,12 +81,47 @@ Definition Wrap mek k sig n :=
     WSome (E_Asym k (Conc w))
     else WFail.
 
+Inductive wrap_with_id_option :=
+  | WSome_with_id (e_mek : text_with_id)
+  | WFail_with_id.
+
+Definition WSomeEquals wsome_result ctt :=
+  match wsome_result with
+  | WSome_with_id e_mek => content e_mek = ctt
+  | WFail_with_id => False
+  end.
+
+Definition Wrap_rel rel mek k sig n idcnt :=
+  if (MVerify_rel k sig)
+    then let w := {|mek_with_id := mek; nonce_with_id := n|} in
+    let '(w_with_id, rel1, idcnt1) := Conc_rel rel w idcnt in
+    let '(e_mek_with_id, rel2, idcnt2) := E_Asym_rel rel1 k w_with_id idcnt1 in
+    (WSome_with_id e_mek_with_id, rel2, idcnt2)
+  else (WFail_with_id, rel, idcnt).
+
 Definition Unwrap w n:=
   let uw :=
     Splt (D_Asym (pr DK) w) in
   if (beq_text (nonce uw) n)
     then USome (mek uw)
     else UFail.
+
+Inductive unwrap_with_id_option :=
+  | USome_with_id (mek : text_with_id)
+  | UFail_with_id.
+
+Definition USomeEquals usome_result ctt :=
+  match usome_result with
+  | USome_with_id mek => content mek = ctt
+  | UFail_with_id => False
+  end.
+
+Definition Unwrap_rel rel w n idcnt :=
+  let '(d_asym_with_id, rel1, idcnt1) := D_Asym_rel rel (pr_with_id DK_with_id) w idcnt in
+  let '(uw_with_id, rel2, idcnt2) := Splt_rel rel1 d_asym_with_id idcnt1 in
+  if (beq_text (content (nonce_with_id uw_with_id)) (content n))
+    then (USome_with_id (mek_with_id uw_with_id), rel2, idcnt2)
+  else (UFail_with_id, rel, idcnt).
 
 Definition AnalyzeLeapSecurity
   (Pipe_t : text->bool->pipeout)

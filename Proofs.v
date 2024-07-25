@@ -116,7 +116,7 @@ Proof.
 Qed.
 
 Lemma correctAuthRel: forall res rel idcnt,
-  Auth_rel [] PWD_with_id 100 = (res, rel, idcnt) ->
+  Auth_rel [] PWD_with_id ID_BASE = (res, rel, idcnt) ->
   ASomeEquals res MEK /\ 
   (list_eq_relation (get_root_leaf_pairs rel)
   [pair PWD_with_id MEK_with_id; pair Salt_with_id MEK_with_id; pair KEK_MEK_with_id MEK_with_id]) = true.
