@@ -9,8 +9,11 @@ Record text_with_id := {identity: nat;
 Record wrapped_with_id := {mek_with_id: text_with_id;
                            nonce_with_id: text_with_id}.
 
-Definition beq_text_with_id (x y: text_with_id) : bool :=
+Definition beq_text_id (x y: text_with_id) : bool :=
   Nat.eqb (identity x) (identity y).
+
+Definition beq_text_content (x y: text_with_id) : bool :=
+  Nat.eqb (content x) (content y).
 
 Inductive relation: Type := 
  | pair (x y: text_with_id).
@@ -30,13 +33,13 @@ Definition snd (r: relation) : text_with_id :=
 Definition eq_relation (r1 r2 : relation) : bool :=
   match r1, r2 with
   | pair x1 y1, pair x2 y2 =>
-    (beq_text_with_id x1 x2) && (beq_text_with_id y1 y2)
+    (beq_text_content x1 x2) && (beq_text_content y1 y2)
   end.
 
 (* Check if the fst and snd part of pair are equal *)
 Definition id_pair (r: relation) : bool :=
   match r with
-  | pair x y => (beq_text_with_id x y)
+  | pair x y => (beq_text_id x y)
   end.
 
 (* Check if a relation exists in a list of relations *)
@@ -66,7 +69,7 @@ Fixpoint get_children (l : relations) (x: text_with_id) : relations :=
 	match l with
 	| [] => []
 	| h :: t =>
-		if beq_text_with_id (fst h) x then h :: (get_children t x)
+		if beq_text_id (fst h) x then h :: (get_children t x)
 		else get_children t x
 	end.
 
@@ -88,13 +91,13 @@ Fixpoint collect_snd (l : relations) : list text_with_id :=
 Definition find_roots (l : relations) : list text_with_id :=
   let fst_nodes := collect_fst l in
   let snd_nodes := collect_snd l in
-  filter (fun x => negb (existsb (beq_text_with_id x) snd_nodes)) fst_nodes.
+  filter (fun x => negb (existsb (beq_text_id x) snd_nodes)) fst_nodes.
 
 (* Find the leaf nodes: those that appear in the second position but not in the first *)
 Definition find_leaves (l : relations) : list text_with_id :=
   let fst_nodes := collect_fst l in
   let snd_nodes := collect_snd l in
-  filter (fun x => negb (existsb (beq_text_with_id x) fst_nodes)) snd_nodes.  
+  filter (fun x => negb (existsb (beq_text_id x) fst_nodes)) snd_nodes.  
 
 Fixpoint list_length {A : Type} (l : list A) : nat :=
 match l with
@@ -107,14 +110,14 @@ Fixpoint find_reachable_leaves_aux (l: relations) (x: text_with_id) (visited: li
   match fuel with
   | 0 => [] 
   | S fuel' =>
-      if existsb (beq_text_with_id x) visited then [] 
+      if existsb (beq_text_id x) visited then [] 
       else
         let children := get_children l x in
         let leaves := find_leaves l in
         let new_visited := x :: visited in
         fold_left (fun acc child => 
                      let child_node := snd child in
-                     if existsb (beq_text_with_id child_node) leaves (*if child_node is leaf node then added to accept list*)
+                     if existsb (beq_text_id child_node) leaves (*if child_node is leaf node then added to accept list*)
                      then child_node :: acc 
                      else (find_reachable_leaves_aux l child_node new_visited fuel') ++ acc) (*else recursively visit child_node*)
                   children []
@@ -132,7 +135,7 @@ Definition get_root_leaf_pairs (l: relations) : list relation :=
   fold_left (fun acc root =>
                let reachable_leaves := find_reachable_leaves l root in
                fold_left (fun acc' leaf =>
-                            if existsb (beq_text_with_id leaf) leaves then (pair root leaf) :: acc'
+                            if existsb (beq_text_id leaf) leaves then (pair root leaf) :: acc'
                             else acc') reachable_leaves acc)
             roots [].
 

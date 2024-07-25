@@ -100,6 +100,66 @@ Proof.
   now rewrite H2.
 Qed.
 
+Lemma beq_id: forall x, x =? x = true.
+Proof.
+  intro x.
+  induction x as [| n IH].
+  - simpl. reflexivity.
+  - simpl. apply IH.
+Qed.
+
+Lemma ignore_cond :
+  forall cond:bool, (if cond then true else true) = true.
+Proof.
+  intros.
+  destruct cond; reflexivity.
+Qed.
+
+Lemma correctAuthRel: forall res rel idcnt,
+  Auth_rel [] PWD_with_id 100 = (res, rel, idcnt) ->
+  ASomeEquals res MEK /\ 
+  (list_eq_relation (get_root_leaf_pairs rel)
+  [pair PWD_with_id MEK_with_id; pair Salt_with_id MEK_with_id; pair KEK_MEK_with_id MEK_with_id]) = true.
+Proof.
+  intros res rel idcnt.
+  unfold Auth_rel, Kdf_rel, D_Sym_rel. simpl.
+  fold KEK.
+  assert (H1: D_Sym KEK KEK_MEK = MEK).
+  {
+    unfold KEK_MEK.
+    now rewrite symEnDe.
+  }
+  rewrite H1.
+  assert (H2: beq_text (Hash MEK) H_MEK = true).
+  {
+    fold H_MEK.
+    now rewrite Nat.eqb_eq.
+  }
+  rewrite H2.
+  intro H3.
+  inversion H3.
+  split.
+  unfold ASomeEquals.
+  auto.
+  unfold get_root_leaf_pairs.
+  unfold list_eq_relation.
+  simpl.
+  unfold beq_text_content.
+  simpl.
+  specialize (beq_id PWD) as H_PWD.
+  specialize (beq_id MEK) as H_MEK.
+  specialize (beq_id Salt) as H_Salt.
+  specialize (beq_id KEK_MEK) as H_KEK_MEK.
+  rewrite H_PWD, H_MEK, H_Salt, H_KEK_MEK. simpl.
+  specialize (ignore_cond ((Salt =? PWD) && true)) as H_Salt_PWD.
+  rewrite H_Salt_PWD.
+  specialize (ignore_cond ((KEK_MEK =? Salt) && true)) as H_KEKMEK_Salt.
+  rewrite H_KEKMEK_Salt.
+  specialize (ignore_cond ((KEK_MEK =? PWD) && true)) as H_KEKMEK_PWD.
+  rewrite H_KEKMEK_PWD.
+  auto.
+Qed.
+
 (*
   Only correct password can get something from Auth, except cracked cases
 *)

@@ -46,6 +46,12 @@ Inductive auth_with_id_option :=
   | ASome_with_id (mek : text_with_id)
   | AFail_with_id.
 
+Definition ASomeEquals asome_result ctt :=
+  match asome_result with
+  | ASome_with_id mek => content mek = ctt
+  | AFail_with_id => False
+  end.
+
 Definition Auth_rel rel PWD_t_with_id idcnt :=
   let '(KEK_t_with_id, rel1, idcnt1) := Kdf_rel rel PWD_t_with_id Salt_with_id idcnt in
   let '(MEK_t_with_id, rel2, idcnt2) := D_Sym_rel rel1 KEK_t_with_id KEK_MEK_with_id idcnt1 in
