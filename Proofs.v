@@ -115,8 +115,8 @@ Proof.
   destruct cond; reflexivity.
 Qed.
 
-Lemma correctAuthRel: forall res env,
-  Auth_rel PWD_with_id ENV_BASE = (res, env) ->
+Lemma correctAuthEnv: forall res env,
+  (res, env) = Auth_rel PWD_with_id ENV_BASE ->
   ASomeEquals res MEK /\
   (list_eq_relation (get_root_leaf_pairs (rel_env env))
   [pair PWD_with_id MEK_with_id; pair Salt_with_id MEK_with_id; pair KEK_MEK_with_id MEK_with_id]) = true.
@@ -266,7 +266,30 @@ Proof.
   now rewrite H2.
 Qed.
 
-(*
+Lemma correctWrapEnv: forall mek k sig n res env,
+  (content sig) = MSign (content k) ->
+  (res, env) = Wrap_rel mek k sig n ENV_BASE ->
+  WSomeEquals res (E_Asym (content k) (Conc {|mek := content mek; nonce := content n|})).
+Proof.
+  intros mek k sig n res env H1.
+  unfold Wrap_rel.
+  simpl.
+  assert (H2: MVerify_rel k sig = true).
+  {
+    unfold MVerify_rel.
+    rewrite H1.
+    apply signCorrect.
+    auto.
+  }
+  rewrite H2.
+  intro H3.
+  inversion H3.
+  unfold WSomeEquals.
+  simpl.
+  auto.
+Qed.
+
+(* 
   Only verified k+sig leads to WSome w, except rare cases
 *)
 Lemma someWrap: forall mek k sig n w,
@@ -286,7 +309,7 @@ Qed.
 Lemma correctUnwrap:
   forall w n,
   nonce w = n ->
-  Unwrap ( E_Asym (pub DK) (Conc w)) n = USome (mek w).
+  Unwrap (E_Asym (pub DK) (Conc w)) n = USome (mek w).
 Proof.
   intros w n H1.
   unfold Unwrap.
@@ -302,6 +325,32 @@ Proof.
   rewrite Nat.eqb_refl.
   rewrite H2.
   rewrite <- H3.
+  auto.
+Qed.
+
+Lemma correctUnwrapEnv: forall w n res env,
+  content (nonce_with_id w) = content n ->
+  let (res1, env1) := Conc_rel w env in
+  let (res2, env2) := E_Asym_rel (pub_with_id DK_with_id) res1 env1 in
+  (res, env) = Unwrap_rel res2 n ENV_BASE ->
+  USomeEquals res (content (mek_with_id w)).
+Proof.
+  intros w n res env.
+  unfold Unwrap_rel.
+  simpl.
+  specialize (asymEnDe DK (Conc {| mek := content (mek_with_id w); nonce := content (nonce_with_id w) |})) as H2.
+  rewrite H2.
+  specialize (serialCorrect {| mek := content (mek_with_id w); nonce := content (nonce_with_id w) |}) as H3.
+  rewrite <- H3.
+  intro H4. rewrite H4.
+  simpl.
+  unfold beq_text.
+  specialize (beq_id (content n)) as H5.
+  rewrite H5.
+  intro H6.
+  inversion H6.
+  unfold USomeEquals.
+  simpl.
   auto.
 Qed.
 
