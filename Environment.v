@@ -21,6 +21,9 @@ Inductive relation: Type :=
  | pair (x y: text_with_id).
 Definition relations := list relation.
 
+Record environment := {rel_env: relations;
+                       id_env: nat}.
+
 Definition fst (r: relation) : text_with_id :=
 	match r with 
 	| pair x y => x
@@ -188,54 +191,81 @@ Definition add_relation_3 (rel : relations) (x y r: text_with_id) :=
   let rel1 := add_relation_2 rel x r in
   add_relation_2 rel1 y r.
 
-Definition E_Sym_rel (k t: text_with_id) (rel : relations) (idcnt: nat) :=
+Definition E_Sym_rel (k t: text_with_id) (env: environment) :=
+  let rel := rel_env env in
+  let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := E_Sym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
-  (r, new_rel, idcnt+1).
+  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  (r, new_env).
 
-Definition D_Sym_rel (k t: text_with_id) (rel : relations) (idcnt: nat) :=
+Definition D_Sym_rel (k t: text_with_id) (env: environment) :=
+  let rel := rel_env env in
+  let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := D_Sym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
-  (r, new_rel, idcnt+1).
+  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  (r, new_env).
 
-Definition E_Asym_rel (k t: text_with_id) (rel : relations) (idcnt: nat) :=
+Definition E_Asym_rel (k t: text_with_id) (env: environment) :=
+  let rel := rel_env env in
+  let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := E_Asym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
-  (r, new_rel, idcnt+1).
+  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  (r, new_env).
 
-Definition D_Asym_rel (k t: text_with_id) (rel : relations) (idcnt: nat) :=
+Definition D_Asym_rel (k t: text_with_id) (env: environment) :=
+  let rel := rel_env env in
+  let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := D_Asym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
-  (r, new_rel, idcnt+1).
+  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  (r, new_env).
 
-Definition Hash_rel (t: text_with_id) (rel : relations) (idcnt: nat) :=
+Definition Hash_rel (t: text_with_id) (env: environment) :=
+  let rel := rel_env env in
+  let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := Hash (content t) |} in
   let new_rel := add_relation_2 rel t r in
-  (r, new_rel, idcnt+1).
+  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  (r, new_env).
 
-Definition Kdf_rel (pwd salt: text_with_id) (rel : relations) (idcnt: nat) :=
+Definition Kdf_rel (pwd salt: text_with_id) (env: environment) :=
+  let rel := rel_env env in
+  let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := Kdf (content pwd) (content salt) |} in
   let new_rel := add_relation_3 rel pwd salt r in
-  (r, new_rel, idcnt+1).
+  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  (r, new_env).
 
-Definition Sign_rel (k t: text_with_id) (rel : relations) (idcnt: nat) :=
+Definition Sign_rel (k t: text_with_id) (env: environment) :=
+  let rel := rel_env env in
+  let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := Sign (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
-  (r, new_rel, idcnt+1).
+  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  (r, new_env).
 
-Definition Conc_rel (w: wrapped_with_id) (rel : relations) (idcnt: nat) :=
+Definition Conc_rel (w: wrapped_with_id) (env: environment) :=
+  let rel := rel_env env in
+  let idcnt := id_env env in
   let tmp_w := {| mek := (content (mek_with_id w));
                   nonce := (content (nonce_with_id w)) |} in
   let r := {| identity := idcnt+1; content := Conc tmp_w |} in
   let rel1 := add_relation_2 rel (mek_with_id w) r in
   let rel2 := add_relation_2 rel1 (nonce_with_id w) r in
-  (r, rel2, idcnt+1).
+  let new_env := {| rel_env := rel2; id_env := idcnt+1 |} in
+  (r, new_env).
 
-Definition Splt_rel (t: text_with_id) (rel : relations) (idcnt: nat) :=
+Definition Splt_rel (t: text_with_id) (env: environment) :=
+  let rel := rel_env env in
+  let idcnt := id_env env in
   let tmp_r := Splt (content t) in
   let tmp_mek := {| identity := idcnt+1; content := mek tmp_r |} in
   let tmp_nonce := {| identity := idcnt+2; content := nonce tmp_r |} in
   let r := {| mek_with_id := tmp_mek; nonce_with_id := tmp_nonce |} in
   let rel1 := add_relation_2 rel t tmp_mek in
   let rel2 := add_relation_2 rel1 t tmp_nonce in
-  (r, rel2, idcnt+2).
+  let new_env := {| rel_env := rel2; id_env := idcnt+2 |} in
+  (r, new_env).

@@ -115,13 +115,13 @@ Proof.
   destruct cond; reflexivity.
 Qed.
 
-Lemma correctAuthRel: forall res rel idcnt,
-  Auth_rel [] PWD_with_id ID_BASE = (res, rel, idcnt) ->
-  ASomeEquals res MEK /\ 
-  (list_eq_relation (get_root_leaf_pairs rel)
+Lemma correctAuthRel: forall res env,
+  Auth_rel PWD_with_id ENV_BASE = (res, env) ->
+  ASomeEquals res MEK /\
+  (list_eq_relation (get_root_leaf_pairs (rel_env env))
   [pair PWD_with_id MEK_with_id; pair Salt_with_id MEK_with_id; pair KEK_MEK_with_id MEK_with_id]) = true.
 Proof.
-  intros res rel idcnt.
+  intros res env.
   unfold Auth_rel, Kdf_rel, D_Sym_rel. simpl.
   fold KEK.
   assert (H1: D_Sym KEK KEK_MEK = MEK).

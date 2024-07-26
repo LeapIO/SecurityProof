@@ -1,4 +1,4 @@
-From LeapSecurity Require Export Relation.
+From LeapSecurity Require Export Environment.
 Require Import Coq.Sets.Ensembles.
 Require Import Coq.Lists.List.
 Import ListNotations.
@@ -13,6 +13,7 @@ Definition KEK_MEK := E_Sym KEK MEK.
 Definition H_MEK := Hash MEK.
 
 Definition ID_BASE := 100.
+Definition ENV_BASE := {|rel_env := []; id_env := ID_BASE|}.
 
 Definition PWD_with_id := {| identity := 1; content := PWD|}.
 Definition Salt_with_id := {| identity := 2; content := Salt|}.
@@ -32,9 +33,8 @@ Definition MVerify t sig :=
   Verify (pub MK) t sig.
 Definition SIG := MSign (pub DK).
 
-Definition MSign_rel rel t idcnt :=
-  let '(sig_with_id, rel1, idcnt1) := Sign_rel rel (pr_with_id DK_with_id) t idcnt in
-  (sig_with_id, rel1, idcnt1).
+Definition MSign_rel t env :=
+  Sign_rel (pr_with_id DK_with_id) t env.
 
 Definition MVerify_rel t sig :=
   Verify (content (pub_with_id MK_with_id)) (content t) (content sig).
@@ -67,12 +67,14 @@ Definition ASomeEquals asome_result ctt :=
   | AFail_with_id => False
   end.
 
-Definition Auth_rel rel PWD_t_with_id idcnt :=
-  let '(KEK_t_with_id, rel1, idcnt1) := Kdf_rel PWD_t_with_id Salt_with_id rel idcnt in
-  let '(MEK_t_with_id, rel2, idcnt2) := D_Sym_rel KEK_t_with_id KEK_MEK_with_id rel1 idcnt1 in
+Definition Auth_rel PWD_t_with_id env :=
+  let rel := rel_env env in
+  let idcnt := id_env env in
+  let (KEK_t_with_id, env1) := Kdf_rel PWD_t_with_id Salt_with_id env in
+  let '(MEK_t_with_id, env2) := D_Sym_rel KEK_t_with_id KEK_MEK_with_id env1 in
   if (beq_text (Hash (content MEK_t_with_id)) (content H_MEK_with_id))
-    then (ASome_with_id MEK_t_with_id, rel2, idcnt2)
-  else (AFail_with_id, rel, idcnt).
+    then (ASome_with_id MEK_t_with_id, env2)
+  else (AFail_with_id, env).
 
 Definition Wrap mek k sig n :=
   if (MVerify k sig)
@@ -91,13 +93,13 @@ Definition WSomeEquals wsome_result ctt :=
   | WFail_with_id => False
   end.
 
-Definition Wrap_rel rel mek k sig n idcnt :=
+Definition Wrap_rel mek k sig n env :=
   if (MVerify_rel k sig)
     then let w := {|mek_with_id := mek; nonce_with_id := n|} in
-    let '(w_with_id, rel1, idcnt1) := Conc_rel w rel idcnt in
-    let '(e_mek_with_id, rel2, idcnt2) := E_Asym_rel k w_with_id rel1 idcnt1 in
-    (WSome_with_id e_mek_with_id, rel2, idcnt2)
-  else (WFail_with_id, rel, idcnt).
+    let (w_with_id, env1) := Conc_rel w env in
+    let (e_mek_with_id, env2) := E_Asym_rel k w_with_id env1 in
+    (WSome_with_id e_mek_with_id, env2)
+  else (WFail_with_id, env).
 
 Definition Unwrap w n:=
   let uw :=
@@ -116,12 +118,12 @@ Definition USomeEquals usome_result ctt :=
   | UFail_with_id => False
   end.
 
-Definition Unwrap_rel rel w n idcnt :=
-  let '(d_asym_with_id, rel1, idcnt1) := D_Asym_rel (pr_with_id DK_with_id) w rel idcnt in
-  let '(uw_with_id, rel2, idcnt2) := Splt_rel d_asym_with_id rel1 idcnt1 in
+Definition Unwrap_rel w n env :=
+  let (d_asym_with_id, env1) := D_Asym_rel (pr_with_id DK_with_id) w env in
+  let (uw_with_id, env2) := Splt_rel d_asym_with_id env1 in
   if (beq_text (content (nonce_with_id uw_with_id)) (content n))
-    then (USome_with_id (mek_with_id uw_with_id), rel2, idcnt2)
-  else (UFail_with_id, rel, idcnt).
+    then (USome_with_id (mek_with_id uw_with_id), env2)
+  else (UFail_with_id, env).
 
 Definition AnalyzeLeapSecurity
   (Pipe_t : text->bool->pipeout)
