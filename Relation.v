@@ -188,42 +188,42 @@ Definition add_relation_3 (rel : relations) (x y r: text_with_id) :=
   let rel1 := add_relation_2 rel x r in
   add_relation_2 rel1 y r.
 
-Definition E_Sym_rel (rel : relations) (k t: text_with_id) (idcnt: nat) :=
+Definition E_Sym_rel (k t: text_with_id) (rel : relations) (idcnt: nat) :=
   let r := {| identity := idcnt+1; content := E_Sym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
   (r, new_rel, idcnt+1).
 
-Definition D_Sym_rel (rel : relations) (k t: text_with_id) (idcnt: nat) :=
+Definition D_Sym_rel (k t: text_with_id) (rel : relations) (idcnt: nat) :=
   let r := {| identity := idcnt+1; content := D_Sym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
   (r, new_rel, idcnt+1).
 
-Definition E_Asym_rel (rel : relations) (k t: text_with_id) (idcnt: nat) :=
+Definition E_Asym_rel (k t: text_with_id) (rel : relations) (idcnt: nat) :=
   let r := {| identity := idcnt+1; content := E_Asym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
   (r, new_rel, idcnt+1).
 
-Definition D_Asym_rel (rel : relations) (k t: text_with_id) (idcnt: nat) :=
+Definition D_Asym_rel (k t: text_with_id) (rel : relations) (idcnt: nat) :=
   let r := {| identity := idcnt+1; content := D_Asym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
   (r, new_rel, idcnt+1).
 
-Definition Hash_rel (rel : relations) (t: text_with_id) (idcnt: nat) :=
+Definition Hash_rel (t: text_with_id) (rel : relations) (idcnt: nat) :=
   let r := {| identity := idcnt+1; content := Hash (content t) |} in
   let new_rel := add_relation_2 rel t r in
   (r, new_rel, idcnt+1).
 
-Definition Kdf_rel (rel : relations) (pwd salt: text_with_id) (idcnt: nat) :=
+Definition Kdf_rel (pwd salt: text_with_id) (rel : relations) (idcnt: nat) :=
   let r := {| identity := idcnt+1; content := Kdf (content pwd) (content salt) |} in
   let new_rel := add_relation_3 rel pwd salt r in
   (r, new_rel, idcnt+1).
 
-Definition Sign_rel (rel : relations) (k t: text_with_id) (idcnt: nat) :=
+Definition Sign_rel (k t: text_with_id) (rel : relations) (idcnt: nat) :=
   let r := {| identity := idcnt+1; content := Sign (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
   (r, new_rel, idcnt+1).
 
-Definition Conc_rel (rel : relations) (w: wrapped_with_id) (idcnt: nat) :=
+Definition Conc_rel (w: wrapped_with_id) (rel : relations) (idcnt: nat) :=
   let tmp_w := {| mek := (content (mek_with_id w));
                   nonce := (content (nonce_with_id w)) |} in
   let r := {| identity := idcnt+1; content := Conc tmp_w |} in
@@ -231,7 +231,7 @@ Definition Conc_rel (rel : relations) (w: wrapped_with_id) (idcnt: nat) :=
   let rel2 := add_relation_2 rel1 (nonce_with_id w) r in
   (r, rel2, idcnt+1).
 
-Definition Splt_rel (rel : relations) (t: text_with_id) (idcnt: nat) :=
+Definition Splt_rel (t: text_with_id) (rel : relations) (idcnt: nat) :=
   let tmp_r := Splt (content t) in
   let tmp_mek := {| identity := idcnt+1; content := mek tmp_r |} in
   let tmp_nonce := {| identity := idcnt+2; content := nonce tmp_r |} in

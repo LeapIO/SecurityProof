@@ -68,8 +68,8 @@ Definition ASomeEquals asome_result ctt :=
   end.
 
 Definition Auth_rel rel PWD_t_with_id idcnt :=
-  let '(KEK_t_with_id, rel1, idcnt1) := Kdf_rel rel PWD_t_with_id Salt_with_id idcnt in
-  let '(MEK_t_with_id, rel2, idcnt2) := D_Sym_rel rel1 KEK_t_with_id KEK_MEK_with_id idcnt1 in
+  let '(KEK_t_with_id, rel1, idcnt1) := Kdf_rel PWD_t_with_id Salt_with_id rel idcnt in
+  let '(MEK_t_with_id, rel2, idcnt2) := D_Sym_rel KEK_t_with_id KEK_MEK_with_id rel1 idcnt1 in
   if (beq_text (Hash (content MEK_t_with_id)) (content H_MEK_with_id))
     then (ASome_with_id MEK_t_with_id, rel2, idcnt2)
   else (AFail_with_id, rel, idcnt).
@@ -94,8 +94,8 @@ Definition WSomeEquals wsome_result ctt :=
 Definition Wrap_rel rel mek k sig n idcnt :=
   if (MVerify_rel k sig)
     then let w := {|mek_with_id := mek; nonce_with_id := n|} in
-    let '(w_with_id, rel1, idcnt1) := Conc_rel rel w idcnt in
-    let '(e_mek_with_id, rel2, idcnt2) := E_Asym_rel rel1 k w_with_id idcnt1 in
+    let '(w_with_id, rel1, idcnt1) := Conc_rel w rel idcnt in
+    let '(e_mek_with_id, rel2, idcnt2) := E_Asym_rel k w_with_id rel1 idcnt1 in
     (WSome_with_id e_mek_with_id, rel2, idcnt2)
   else (WFail_with_id, rel, idcnt).
 
@@ -117,8 +117,8 @@ Definition USomeEquals usome_result ctt :=
   end.
 
 Definition Unwrap_rel rel w n idcnt :=
-  let '(d_asym_with_id, rel1, idcnt1) := D_Asym_rel rel (pr_with_id DK_with_id) w idcnt in
-  let '(uw_with_id, rel2, idcnt2) := Splt_rel rel1 d_asym_with_id idcnt1 in
+  let '(d_asym_with_id, rel1, idcnt1) := D_Asym_rel (pr_with_id DK_with_id) w rel idcnt in
+  let '(uw_with_id, rel2, idcnt2) := Splt_rel d_asym_with_id rel1 idcnt1 in
   if (beq_text (content (nonce_with_id uw_with_id)) (content n))
     then (USome_with_id (mek_with_id uw_with_id), rel2, idcnt2)
   else (UFail_with_id, rel, idcnt).
