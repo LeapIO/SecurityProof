@@ -22,6 +22,7 @@ Inductive relation: Type :=
 Definition relations := list relation.
 
 Record environment := {rel_env: relations;
+                       leaked_env: list text_with_id;
                        id_env: nat}.
 
 Definition fst (r: relation) : text_with_id :=
@@ -191,12 +192,15 @@ Definition add_relation_3 (rel : relations) (x y r: text_with_id) :=
   let rel1 := add_relation_2 rel x r in
   add_relation_2 rel1 y r.
 
+Definition add_leaked (leaked: list text_with_id) (x: text_with_id) :=
+  x :: leaked.
+
 Definition E_Sym_rel (k t: text_with_id) (env: environment) :=
   let rel := rel_env env in
   let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := E_Sym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
-  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
 Definition D_Sym_rel (k t: text_with_id) (env: environment) :=
@@ -204,7 +208,7 @@ Definition D_Sym_rel (k t: text_with_id) (env: environment) :=
   let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := D_Sym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
-  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
 Definition E_Asym_rel (k t: text_with_id) (env: environment) :=
@@ -212,7 +216,7 @@ Definition E_Asym_rel (k t: text_with_id) (env: environment) :=
   let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := E_Asym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
-  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
 Definition D_Asym_rel (k t: text_with_id) (env: environment) :=
@@ -220,7 +224,7 @@ Definition D_Asym_rel (k t: text_with_id) (env: environment) :=
   let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := D_Asym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
-  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
 Definition Hash_rel (t: text_with_id) (env: environment) :=
@@ -228,7 +232,7 @@ Definition Hash_rel (t: text_with_id) (env: environment) :=
   let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := Hash (content t) |} in
   let new_rel := add_relation_2 rel t r in
-  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
 Definition Kdf_rel (pwd salt: text_with_id) (env: environment) :=
@@ -236,7 +240,7 @@ Definition Kdf_rel (pwd salt: text_with_id) (env: environment) :=
   let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := Kdf (content pwd) (content salt) |} in
   let new_rel := add_relation_3 rel pwd salt r in
-  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
 Definition Sign_rel (k t: text_with_id) (env: environment) :=
@@ -244,7 +248,7 @@ Definition Sign_rel (k t: text_with_id) (env: environment) :=
   let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := Sign (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
-  let new_env := {| rel_env := new_rel; id_env := idcnt+1 |} in
+  let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
 Definition Conc_rel (w: wrapped_with_id) (env: environment) :=
@@ -255,7 +259,7 @@ Definition Conc_rel (w: wrapped_with_id) (env: environment) :=
   let r := {| identity := idcnt+1; content := Conc tmp_w |} in
   let rel1 := add_relation_2 rel (mek_with_id w) r in
   let rel2 := add_relation_2 rel1 (nonce_with_id w) r in
-  let new_env := {| rel_env := rel2; id_env := idcnt+1 |} in
+  let new_env := {| rel_env := rel2; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
 Definition Splt_rel (t: text_with_id) (env: environment) :=
@@ -267,5 +271,5 @@ Definition Splt_rel (t: text_with_id) (env: environment) :=
   let r := {| mek_with_id := tmp_mek; nonce_with_id := tmp_nonce |} in
   let rel1 := add_relation_2 rel t tmp_mek in
   let rel2 := add_relation_2 rel1 t tmp_nonce in
-  let new_env := {| rel_env := rel2; id_env := idcnt+2 |} in
+  let new_env := {| rel_env := rel2; leaked_env := leaked_env env; id_env := idcnt+2 |} in
   (r, new_env).

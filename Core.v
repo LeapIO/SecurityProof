@@ -13,7 +13,7 @@ Definition KEK_MEK := E_Sym KEK MEK.
 Definition H_MEK := Hash MEK.
 
 Definition ID_BASE := 100.
-Definition ENV_BASE := {|rel_env := []; id_env := ID_BASE|}.
+Definition ENV_BASE := {|rel_env := []; leaked_env := []; id_env := ID_BASE|}.
 
 Definition PWD_with_id := {| identity := 1; content := PWD|}.
 Definition Salt_with_id := {| identity := 2; content := Salt|}.
