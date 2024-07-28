@@ -192,8 +192,10 @@ Definition add_relation_3 (rel : relations) (x y r: text_with_id) :=
   let rel1 := add_relation_2 rel x r in
   add_relation_2 rel1 y r.
 
-Definition add_leaked (leaked: list text_with_id) (x: text_with_id) :=
-  x :: leaked.
+Definition add_leaked (x: text_with_id) (env: environment) :=
+  {| rel_env := rel_env env;
+     leaked_env := x :: leaked_env env;
+     id_env := id_env env |}.
 
 Definition E_Sym_rel (k t: text_with_id) (env: environment) :=
   let rel := rel_env env in

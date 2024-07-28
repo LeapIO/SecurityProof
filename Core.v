@@ -46,10 +46,33 @@ Definition Pipe t (trusted:bool) :=
     else {|data := t;
            leaked := {t} |}.
 
+Definition SafePipe (t: text_with_id) (env: environment) := (t, env).
+Definition UnsafePipe (t: text_with_id) (env: environment) := (t, add_leaked t env).
+
 Parameter EnterPwd: password.
 Parameter FetchPub: key.
 Parameter FetchSig: text.
 Parameter FetchNonce: nat.
+
+Definition EnterPwd_ref env := 
+  let idcnt := id_env env in
+  let pwd := {| identity := idcnt+1; content := EnterPwd|} in
+  (pwd, {|rel_env := rel_env env; leaked_env := leaked_env env; id_env := idcnt+1|}).
+
+Definition FetchPub_ref env :=
+  let idcnt := id_env env in
+  let pubk := {| identity := idcnt+1; content := FetchPub|} in
+  (pubk, {|rel_env := rel_env env; leaked_env := leaked_env env; id_env := idcnt+1|}).
+
+Definition FetchSig_ref env :=
+  let idcnt := id_env env in
+  let sig := {| identity := idcnt+1; content := FetchSig|} in
+  (sig, {|rel_env := rel_env env; leaked_env := leaked_env env; id_env := idcnt+1|}).
+
+Definition FetchNonce_ref env :=
+  let idcnt := id_env env in
+  let nonce := {| identity := idcnt+1; content := FetchNonce|} in
+  (nonce, {|rel_env := rel_env env; leaked_env := leaked_env env; id_env := idcnt+1|}).
 
 Definition Auth PWD_t :=
   let KEK_t := Kdf PWD_t Salt in
