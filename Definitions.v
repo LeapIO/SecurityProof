@@ -66,9 +66,9 @@ Definition Safe s t := t ∉ (Infer s).
 
 Parameter CrackSignature: Prop.
 Parameter CrackHash: Prop.
-Parameter E_Sym D_Sym:
+Parameter ESym DSym:
   key -> text -> text.
-Parameter E_Asym D_Asym:
+Parameter EASym DASym:
   key -> text -> text.
 Parameter Hash: text -> text.
 Parameter Kdf: password -> salt -> key.
@@ -92,21 +92,21 @@ Axiom incSafe: forall t h s,
   (Safe (h :: s) t).
 
 Axiom symEnDe:
-  forall k t, D_Sym k (E_Sym k t) = t.
+  forall k t, DSym k (ESym k t) = t.
 Axiom symDeEn:
-  forall k t, E_Sym k (D_Sym k t) = t.
+  forall k t, ESym k (DSym k t) = t.
 Axiom symSafety: forall k t,
-  Safe {E_Sym k t} t.
+  Safe {ESym k t} t.
 Axiom asymKeySafety: forall kp,
   Safe {pr kp} (pub kp).
 Axiom asymEnDe: forall kp t,
-  D_Asym (pr kp) (E_Asym (pub kp) t) = t.
+  DASym (pr kp) (EASym (pub kp) t) = t.
 Axiom conflictHash: forall t1 t2,
   Hash t1 = Hash t2 -> (t1 = t2 \/ CrackHash).
 Axiom injectiveKdf: forall p1 p2 salt,
   p1 <> p2 -> Kdf p1 salt <> Kdf p2 salt.
 Axiom bijectiveSym: forall k1 k2 t,
-  k1 = k2 <-> E_Sym k1 t = E_Sym k2 t.
+  k1 = k2 <-> ESym k1 t = ESym k2 t.
 Axiom signCorrect: forall kp t sig,
   sig = Sign (pr kp) t \/ CrackSignature <->
   Verify (pub kp) t sig = true.

@@ -86,7 +86,7 @@ Lemma correctAuth: Auth PWD = ASome MEK.
 Proof.
   unfold Auth.
   fold KEK.
-  assert (H1: D_Sym KEK KEK_MEK = MEK).
+  assert (H1: DSym KEK KEK_MEK = MEK).
   {
     unfold KEK_MEK.
     now rewrite symEnDe.
@@ -116,15 +116,15 @@ Proof.
 Qed.
 
 Lemma correctAuthEnv: forall res env,
-  (res, env) = Auth_rel PWD_with_id ENV_BASE ->
+  (res, env) = AuthEnv PWD_with_id ENV_BASE ->
   ASomeEquals res MEK /\
   (list_eq_relation (get_root_leaf_pairs (rel_env env))
   [pair PWD_with_id MEK_with_id; pair Salt_with_id MEK_with_id; pair KEK_MEK_with_id MEK_with_id]) = true.
 Proof.
   intros res env.
-  unfold Auth_rel, Kdf_rel, D_Sym_rel. simpl.
+  unfold AuthEnv, KdfEnv, DSymEnv. simpl.
   fold KEK.
-  assert (H1: D_Sym KEK KEK_MEK = MEK).
+  assert (H1: DSym KEK KEK_MEK = MEK).
   {
     unfold KEK_MEK.
     now rewrite symEnDe.
@@ -167,10 +167,10 @@ Lemma getSomethingFromAuth: forall p k,
   Auth p = ASome k -> p = PWD \/ CrackHash.
 Proof.
   intros p k H1.
-  assert (H2: Hash (D_Sym (Kdf p Salt) KEK_MEK) = H_MEK).
+  assert (H2: Hash (DSym (Kdf p Salt) KEK_MEK) = H_MEK).
   {
     unfold Auth in H1.
-    case_eq (beq_text (Hash (D_Sym (Kdf p Salt) KEK_MEK)) H_MEK).
+    case_eq (beq_text (Hash (DSym (Kdf p Salt) KEK_MEK)) H_MEK).
     - intro HP.
       rewrite Nat.eqb_eq in HP.
       auto.
@@ -182,7 +182,7 @@ Proof.
   unfold H_MEK in H2.
   apply conflictHash in H2.
   inversion H2 as [H3 | H4].
-  - assert (H5: KEK_MEK = E_Sym (Kdf p Salt) MEK).
+  - assert (H5: KEK_MEK = ESym (Kdf p Salt) MEK).
     {
       rewrite <- H3.
       specialize (symDeEn (Kdf p Salt) KEK_MEK) as H6.
@@ -251,7 +251,7 @@ Lemma correctWrap:
   forall mek k sig n,
   sig = MSign k ->
   Wrap mek k sig n =
-    WSome (E_Asym k
+    WSome (EASym k
           (Conc {|mek := mek;
                   nonce := n|})).
 Proof.
@@ -268,15 +268,15 @@ Qed.
 
 Lemma correctWrapEnv: forall mek k sig n res env,
   (content sig) = MSign (content k) ->
-  (res, env) = Wrap_rel mek k sig n ENV_BASE ->
-  WSomeEquals res (E_Asym (content k) (Conc {|mek := content mek; nonce := content n|})).
+  (res, env) = WrapEnv mek k sig n ENV_BASE ->
+  WSomeEquals res (EASym (content k) (Conc {|mek := content mek; nonce := content n|})).
 Proof.
   intros mek k sig n res env H1.
-  unfold Wrap_rel.
+  unfold WrapEnv.
   simpl.
-  assert (H2: MVerify_rel k sig = true).
+  assert (H2: MVerifyEnv k sig = true).
   {
-    unfold MVerify_rel.
+    unfold MVerifyEnv.
     rewrite H1.
     apply signCorrect.
     auto.
@@ -309,13 +309,13 @@ Qed.
 Lemma correctUnwrap:
   forall w n,
   nonce w = n ->
-  Unwrap (E_Asym (pub DK) (Conc w)) n = USome (mek w).
+  Unwrap (EASym (pub DK) (Conc w)) n = USome (mek w).
 Proof.
   intros w n H1.
   unfold Unwrap.
   specialize (asymEnDe DK (Conc w)) as H2.
   specialize (serialCorrect w) as H3.
-  assert (H4: nonce (Splt (D_Asym (pr DK) (E_Asym (pub DK) (Conc w)))) = n).
+  assert (H4: nonce (Splt (DASym (pr DK) (EASym (pub DK) (Conc w)))) = n).
   {
     rewrite H2.
     rewrite <- H3.
@@ -330,13 +330,13 @@ Qed.
 
 Lemma correctUnwrapEnv: forall w n res env,
   content (nonce_with_id w) = content n ->
-  let (res1, env1) := Conc_rel w env in
-  let (res2, env2) := E_Asym_rel (pub_with_id DK_with_id) res1 env1 in
-  (res, env) = Unwrap_rel res2 n ENV_BASE ->
+  let (res1, env1) := ConcEnv w env in
+  let (res2, env2) := EAsymEnv (pub_with_id DK_with_id) res1 env1 in
+  (res, env) = UnWrapEnv res2 n ENV_BASE ->
   USomeEquals res (content (mek_with_id w)).
 Proof.
   intros w n res env.
-  unfold Unwrap_rel.
+  unfold UnWrapEnv.
   simpl.
   specialize (asymEnDe DK (Conc {| mek := content (mek_with_id w); nonce := content (nonce_with_id w) |})) as H2.
   rewrite H2.
@@ -355,7 +355,7 @@ Proof.
 Qed.
 
 Theorem correctLeapSecurity:
-  let w := E_Asym (pub DK) (
+  let w := EASym (pub DK) (
            Conc {|mek := MEK;
                   nonce := FetchNonce|})
   in EnterPwd = PWD ->

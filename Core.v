@@ -9,7 +9,7 @@ Parameter MEK: key.
 Parameter MK DK: key_pair.
 
 Definition KEK := Kdf PWD Salt.
-Definition KEK_MEK := E_Sym KEK MEK.
+Definition KEK_MEK := ESym KEK MEK.
 Definition H_MEK := Hash MEK.
 
 Definition ID_BASE := 100.
@@ -33,10 +33,10 @@ Definition MVerify t sig :=
   Verify (pub MK) t sig.
 Definition SIG := MSign (pub DK).
 
-Definition MSign_rel t env :=
-  Sign_rel (pr_with_id DK_with_id) t env.
+Definition MSignEnv t env :=
+  SignEnv (pr_with_id DK_with_id) t env.
 
-Definition MVerify_rel t sig :=
+Definition MVerifyEnv t sig :=
   Verify (content (pub_with_id MK_with_id)) (content t) (content sig).
 
 Definition Pipe t (trusted:bool) :=
@@ -54,29 +54,29 @@ Parameter FetchPub: key.
 Parameter FetchSig: text.
 Parameter FetchNonce: nat.
 
-Definition EnterPwd_ref env := 
+Definition EnterPwdEnv env := 
   let idcnt := id_env env in
   let pwd := {| identity := idcnt+1; content := EnterPwd|} in
   (pwd, {|rel_env := rel_env env; leaked_env := leaked_env env; id_env := idcnt+1|}).
 
-Definition FetchPub_ref env :=
+Definition FetchPubEnv env :=
   let idcnt := id_env env in
   let pubk := {| identity := idcnt+1; content := FetchPub|} in
   (pubk, {|rel_env := rel_env env; leaked_env := leaked_env env; id_env := idcnt+1|}).
 
-Definition FetchSig_ref env :=
+Definition FetchSigEnv env :=
   let idcnt := id_env env in
   let sig := {| identity := idcnt+1; content := FetchSig|} in
   (sig, {|rel_env := rel_env env; leaked_env := leaked_env env; id_env := idcnt+1|}).
 
-Definition FetchNonce_ref env :=
+Definition FetchNonceEnv env :=
   let idcnt := id_env env in
   let nonce := {| identity := idcnt+1; content := FetchNonce|} in
   (nonce, {|rel_env := rel_env env; leaked_env := leaked_env env; id_env := idcnt+1|}).
 
 Definition Auth PWD_t :=
   let KEK_t := Kdf PWD_t Salt in
-  let MEK_t := D_Sym KEK_t KEK_MEK in
+  let MEK_t := DSym KEK_t KEK_MEK in
   if (beq_text (Hash MEK_t) H_MEK)
     then ASome MEK_t else AFail.
 
@@ -90,11 +90,11 @@ Definition ASomeEquals asome_result ctt :=
   | AFail_with_id => False
   end.
 
-Definition Auth_rel PWD_t_with_id env :=
+Definition AuthEnv PWD_t_with_id env :=
   let rel := rel_env env in
   let idcnt := id_env env in
-  let (KEK_t_with_id, env1) := Kdf_rel PWD_t_with_id Salt_with_id env in
-  let '(MEK_t_with_id, env2) := D_Sym_rel KEK_t_with_id KEK_MEK_with_id env1 in
+  let (KEK_t_with_id, env1) := KdfEnv PWD_t_with_id Salt_with_id env in
+  let '(MEK_t_with_id, env2) := DSymEnv KEK_t_with_id KEK_MEK_with_id env1 in
   if (beq_text (Hash (content MEK_t_with_id)) (content H_MEK_with_id))
     then (ASome_with_id MEK_t_with_id, env2)
   else (AFail_with_id, env).
@@ -103,7 +103,7 @@ Definition Wrap mek k sig n :=
   if (MVerify k sig)
     then let w := {|mek := mek;
                   nonce := n|} in
-    WSome (E_Asym k (Conc w))
+    WSome (EASym k (Conc w))
     else WFail.
 
 Inductive wrap_with_id_option :=
@@ -116,17 +116,17 @@ Definition WSomeEquals wsome_result ctt :=
   | WFail_with_id => False
   end.
 
-Definition Wrap_rel mek k sig n env :=
-  if (MVerify_rel k sig)
+Definition WrapEnv mek k sig n env :=
+  if (MVerifyEnv k sig)
     then let w := {|mek_with_id := mek; nonce_with_id := n|} in
-    let (w_with_id, env1) := Conc_rel w env in
-    let (e_mek_with_id, env2) := E_Asym_rel k w_with_id env1 in
+    let (w_with_id, env1) := ConcEnv w env in
+    let (e_mek_with_id, env2) := EAsymEnv k w_with_id env1 in
     (WSome_with_id e_mek_with_id, env2)
   else (WFail_with_id, env).
 
 Definition Unwrap w n:=
   let uw :=
-    Splt (D_Asym (pr DK) w) in
+    Splt (DASym (pr DK) w) in
   if (beq_text (nonce uw) n)
     then USome (mek uw)
     else UFail.
@@ -141,9 +141,9 @@ Definition USomeEquals usome_result ctt :=
   | UFail_with_id => False
   end.
 
-Definition Unwrap_rel w n env :=
-  let (d_asym_with_id, env1) := D_Asym_rel (pr_with_id DK_with_id) w env in
-  let (uw_with_id, env2) := Splt_rel d_asym_with_id env1 in
+Definition UnWrapEnv w n env :=
+  let (DASym_with_id, env1) := DAsymEnv (pr_with_id DK_with_id) w env in
+  let (uw_with_id, env2) := SpltEnv DASym_with_id env1 in
   if (beq_text (content (nonce_with_id uw_with_id)) (content n))
     then (USome_with_id (mek_with_id uw_with_id), env2)
   else (UFail_with_id, env).
@@ -191,6 +191,49 @@ Definition AnalyzeLeapSecurity
     end
   end.
 
+Inductive leap_with_id_option :=
+  | LSome_with_id (res : text_with_id)
+  | LAuthFail_with_id
+  | LWrapFail_with_id
+  | LUnwrapFail_with_id.
+
+Definition AnalyzeLeapSecurity_rel
+  (HostPipe_t : text_with_id->environment->text_with_id*environment)
+  (PCIePipe_t : text_with_id->environment->text_with_id*environment)
+  (EnterPwd_t : environment->text_with_id*environment)
+  (FetchPub_t: environment->text_with_id*environment)
+  (FetchSig_t: environment->text_with_id*environment)
+  (FetchNonce_t : environment->text_with_id*environment)
+  (Auth_t : text_with_id->environment->auth_with_id_option*environment)
+  (Wrap_t : text_with_id->text_with_id->text_with_id->text_with_id->environment->wrap_with_id_option*environment)
+  (Unwrap_t : text_with_id->text_with_id->environment->unwrap_with_id_option*environment)
+  (env: environment) :=
+  let (eout, env1) := EnterPwd_t env in
+  let (e2a, env2) := HostPipe_t eout env1 in
+  let (aout, env3) := Auth_t e2a env2 in
+  match aout with
+  | AFail_with_id => (LAuthFail_with_id, env3)
+  | ASome_with_id mek_with_id =>
+    let (a2w, env4) := HostPipe_t mek_with_id env3 in
+    let (pubk_with_id, env5) := FetchPub_t env4 in
+    let (p2w, env6) := PCIePipe_t pubk_with_id env5 in
+    let (sig_with_id, env7) := FetchSig_t env6 in
+    let (s2w, env8) := PCIePipe_t sig_with_id env7 in
+    let (nonce_with_id, env9) := FetchNonce_t env8 in
+    let (n2w, env10) := PCIePipe_t nonce_with_id env9 in
+    let (wout, env11) := Wrap_t a2w pubk_with_id sig_with_id nonce_with_id env10 in
+    match wout with
+    | WFail_with_id => (LWrapFail_with_id, env11)
+    | WSome_with_id w_with_id =>
+      let (w2u, env12) := PCIePipe_t w_with_id env11 in
+      let (uout, env13) := Unwrap_t w_with_id nonce_with_id env12 in
+      match uout with
+      | UFail_with_id => (LUnwrapFail_with_id, env13)
+      | USome_with_id res_with_id => (LSome_with_id res_with_id, env13)
+      end
+    end
+  end.
+
 Definition NormalProcess :=
   AnalyzeLeapSecurity 
     Pipe
@@ -201,6 +244,18 @@ Definition NormalProcess :=
     Auth
     Wrap
     Unwrap.
+
+Definition NormalProcess_rel :=
+  AnalyzeLeapSecurity_rel
+    SafePipe
+    UnsafePipe
+    EnterPwdEnv
+    FetchPubEnv
+    FetchSigEnv
+    FetchNonceEnv
+    AuthEnv
+    WrapEnv
+    UnWrapEnv.
 
 Definition FakePubSig FakePub FakeSig :=
   AnalyzeLeapSecurity 

@@ -197,39 +197,39 @@ Definition add_leaked (x: text_with_id) (env: environment) :=
      leaked_env := x :: leaked_env env;
      id_env := id_env env |}.
 
-Definition E_Sym_rel (k t: text_with_id) (env: environment) :=
+Definition ESymEnv (k t: text_with_id) (env: environment) :=
   let rel := rel_env env in
   let idcnt := id_env env in
-  let r := {| identity := idcnt+1; content := E_Sym (content k) (content t) |} in
+  let r := {| identity := idcnt+1; content := ESym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
   let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
-Definition D_Sym_rel (k t: text_with_id) (env: environment) :=
+Definition DSymEnv (k t: text_with_id) (env: environment) :=
   let rel := rel_env env in
   let idcnt := id_env env in
-  let r := {| identity := idcnt+1; content := D_Sym (content k) (content t) |} in
+  let r := {| identity := idcnt+1; content := DSym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
   let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
-Definition E_Asym_rel (k t: text_with_id) (env: environment) :=
+Definition EAsymEnv (k t: text_with_id) (env: environment) :=
   let rel := rel_env env in
   let idcnt := id_env env in
-  let r := {| identity := idcnt+1; content := E_Asym (content k) (content t) |} in
+  let r := {| identity := idcnt+1; content := EASym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
   let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
-Definition D_Asym_rel (k t: text_with_id) (env: environment) :=
+Definition DAsymEnv (k t: text_with_id) (env: environment) :=
   let rel := rel_env env in
   let idcnt := id_env env in
-  let r := {| identity := idcnt+1; content := D_Asym (content k) (content t) |} in
+  let r := {| identity := idcnt+1; content := DASym (content k) (content t) |} in
   let new_rel := add_relation_3 rel k t r in
   let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
-Definition Hash_rel (t: text_with_id) (env: environment) :=
+Definition HashEnv (t: text_with_id) (env: environment) :=
   let rel := rel_env env in
   let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := Hash (content t) |} in
@@ -237,7 +237,7 @@ Definition Hash_rel (t: text_with_id) (env: environment) :=
   let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
-Definition Kdf_rel (pwd salt: text_with_id) (env: environment) :=
+Definition KdfEnv (pwd salt: text_with_id) (env: environment) :=
   let rel := rel_env env in
   let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := Kdf (content pwd) (content salt) |} in
@@ -245,7 +245,7 @@ Definition Kdf_rel (pwd salt: text_with_id) (env: environment) :=
   let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
-Definition Sign_rel (k t: text_with_id) (env: environment) :=
+Definition SignEnv (k t: text_with_id) (env: environment) :=
   let rel := rel_env env in
   let idcnt := id_env env in
   let r := {| identity := idcnt+1; content := Sign (content k) (content t) |} in
@@ -253,7 +253,7 @@ Definition Sign_rel (k t: text_with_id) (env: environment) :=
   let new_env := {| rel_env := new_rel; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
-Definition Conc_rel (w: wrapped_with_id) (env: environment) :=
+Definition ConcEnv (w: wrapped_with_id) (env: environment) :=
   let rel := rel_env env in
   let idcnt := id_env env in
   let tmp_w := {| mek := (content (mek_with_id w));
@@ -264,7 +264,7 @@ Definition Conc_rel (w: wrapped_with_id) (env: environment) :=
   let new_env := {| rel_env := rel2; leaked_env := leaked_env env; id_env := idcnt+1 |} in
   (r, new_env).
 
-Definition Splt_rel (t: text_with_id) (env: environment) :=
+Definition SpltEnv (t: text_with_id) (env: environment) :=
   let rel := rel_env env in
   let idcnt := id_env env in
   let tmp_r := Splt (content t) in
