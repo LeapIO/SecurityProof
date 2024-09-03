@@ -3,6 +3,12 @@ Require Import Coq.Sets.Ensembles.
 Require Import Coq.Lists.List.
 Import ListNotations.
 
+Definition get_first {A B : Type} (p : A * B) : A :=
+  let (a, b) := p in a.
+
+Definition get_second {A B : Type} (p : A * B) : B :=
+  let (a, b) := p in b.
+
 Parameter PWD: password.
 Parameter Salt: salt.
 Parameter MEK: key.
@@ -196,6 +202,12 @@ Inductive leap_with_id_option :=
   | LAuthFail_with_id
   | LWrapFail_with_id
   | LUnwrapFail_with_id.
+
+Definition LSomeEquals lsome_result ctt :=
+  match lsome_result with
+  | LSome_with_id res => content res = ctt
+  | _ => False
+  end.
 
 Definition AnalyzeLeapSecurity_rel
   (HostPipe_t : text_with_id->environment->text_with_id*environment)

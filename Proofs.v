@@ -160,6 +160,33 @@ Proof.
   auto.
 Qed.
 
+Lemma correctAuthEnv_Res: forall res pwd env' env,
+  content pwd = PWD ->
+  (res, env') = AuthEnv pwd env ->
+  ASomeEquals res MEK.
+Proof.
+  intros res pwd env' env H0.
+  unfold AuthEnv, KdfEnv, DSymEnv. simpl.
+  rewrite H0.
+  fold KEK.
+  assert (H1: DSym KEK KEK_MEK = MEK).
+  {
+    unfold KEK_MEK.
+    now rewrite symEnDe.
+  }
+  rewrite H1.
+  assert (H2: beq_text (Hash MEK) H_MEK = true).
+  {
+    fold H_MEK.
+    now rewrite Nat.eqb_eq.
+  }
+  rewrite H2.
+  intro H3.
+  inversion H3.
+  split.
+Qed.
+
+
 (*
   Only correct password can get something from Auth, except cracked cases
 *)
@@ -266,12 +293,12 @@ Proof.
   now rewrite H2.
 Qed.
 
-Lemma correctWrapEnv: forall mek k sig n res env,
+Lemma correctWrapEnv_Res: forall mek k sig n res env env',
   (content sig) = MSign (content k) ->
-  (res, env) = WrapEnv mek k sig n ENV_BASE ->
+  (res, env') = WrapEnv mek k sig n env ->
   WSomeEquals res (EASym (content k) (Conc {|mek := content mek; nonce := content n|})).
 Proof.
-  intros mek k sig n res env H1.
+  intros mek k sig n res env env' H1.
   unfold WrapEnv.
   simpl.
   assert (H2: MVerifyEnv k sig = true).
@@ -328,15 +355,15 @@ Proof.
   auto.
 Qed.
 
-Lemma correctUnwrapEnv: forall w n res env,
+Lemma correctUnwrapEnv: forall w n env,
   content (nonce_with_id w) = content n ->
   let (res1, env1) := ConcEnv w env in
   let (res2, env2) := EAsymEnv (pub_with_id DK_with_id) res1 env1 in
-  (res, env) = UnWrapEnv res2 n ENV_BASE ->
-  USomeEquals res (content (mek_with_id w)).
+  USomeEquals (get_first (UnWrapEnv res2 n env)) (content (mek_with_id w)).
 Proof.
-  intros w n res env.
+  intros w n env.
   unfold UnWrapEnv.
+  unfold get_first.
   simpl.
   specialize (asymEnDe DK (Conc {| mek := content (mek_with_id w); nonce := content (nonce_with_id w) |})) as H2.
   rewrite H2.
@@ -347,8 +374,6 @@ Proof.
   unfold beq_text.
   specialize (beq_id (content n)) as H5.
   rewrite H5.
-  intro H6.
-  inversion H6.
   unfold USomeEquals.
   simpl.
   auto.
@@ -387,6 +412,141 @@ Proof.
   trivial.
   trivial.
 Qed.
+
+Theorem correctLeapSecurityEnv:
+  forall w,
+    content (mek_with_id w) = MEK ->
+    (forall env, content (get_first (EnterPwdEnv env)) = PWD) ->
+    (forall env, content (get_first (FetchPubEnv env)) = pub DK) ->
+    (forall env, content (get_first (FetchSigEnv env)) = SIG) ->
+    (forall env, content (get_first (FetchNonceEnv env)) = content (nonce_with_id w)) ->
+  LSomeEquals (get_first (NormalProcess_rel ENV_BASE)) (content (mek_with_id w)).
+Proof.
+  intros w H0 H1 H2 H3 H4.
+  unfold NormalProcess_rel.
+  unfold AnalyzeLeapSecurity_rel.
+  unfold SafePipe.
+  unfold UnsafePipe.
+  unfold EnterPwdEnv.
+
+  (* content mek = MEK *)
+  assert (H5: content {| identity := id_env ENV_BASE + 1; content := EnterPwd |} = PWD).
+  {
+    simpl.
+    specialize (H1 ENV_BASE) as HA.
+    simpl in HA.
+    auto.
+  }
+  remember (AuthEnv {| identity := id_env ENV_BASE + 1; content := EnterPwd |}
+          {| rel_env := rel_env ENV_BASE; leaked_env := leaked_env ENV_BASE; id_env := id_env ENV_BASE + 1 |})
+          as p eqn:H6.
+  destruct p as [aout env1].
+  assert (H7: ASomeEquals aout MEK).
+  {
+    specialize (correctAuthEnv_Res aout {| identity := id_env ENV_BASE + 1; content := EnterPwd |}
+              env1 {| rel_env := rel_env ENV_BASE; leaked_env := leaked_env ENV_BASE; id_env := id_env ENV_BASE + 1 |}) as HA.
+    rewrite H5 in HA.
+    auto.
+  }
+  destruct aout eqn:H8.
+  2: {
+    contradiction.
+  }
+  simpl in H7.
+  clear H1 H5 H6 H8.
+
+  (* content pubk_with_id = pub DK *)
+  remember (FetchPubEnv env1) as p eqn:H5.
+  destruct p as [pubk_with_id env2].
+  assert (H8: content pubk_with_id = pub DK).
+  {
+    specialize (H2 env1) as HA.
+    rewrite <- H5 in HA.
+    unfold get_first in HA.
+    auto.
+  }
+  clear H2 H5.
+
+  (* content sig_with_id = SIG *)
+  remember (FetchSigEnv (add_leaked pubk_with_id env2)) as p eqn:H5.
+  destruct p as [sig_with_id env3].
+  assert (H9: content sig_with_id = SIG).
+  {
+    specialize (H3 (add_leaked pubk_with_id env2)) as HA.
+    rewrite <- H5 in HA.
+    unfold get_first in HA.
+    auto.
+  }
+  clear H3 H5.
+
+  remember (FetchNonceEnv (add_leaked sig_with_id env3)) as p eqn:H5.
+  destruct p as [n_with_id env4].
+  assert (H10: content n_with_id = content (nonce_with_id w)).
+  {
+    specialize (H4 (add_leaked sig_with_id env3)) as HA.
+    rewrite <- H5 in HA.
+    unfold get_first in HA.
+    auto.
+  }
+  clear H4 H5.
+
+  remember (WrapEnv mek pubk_with_id sig_with_id n_with_id (add_leaked n_with_id env4)) as p eqn:H5.
+  destruct p as [wout env5].
+  assert (H11: WSomeEquals wout (EASym (content pubk_with_id) (Conc {| mek := content mek; nonce := content n_with_id |}))).
+  {
+    specialize (correctWrapEnv_Res mek pubk_with_id sig_with_id n_with_id wout
+      (add_leaked n_with_id env4) env5) as HA.
+    assert (HB: content sig_with_id = MSign (content pubk_with_id)).
+    {
+      rewrite H9.
+      unfold SIG.
+      rewrite H8.
+      auto.
+    }
+    auto.
+  }
+  destruct wout eqn:H2.
+  2: {
+    contradiction.
+  }
+  simpl in H11.
+  clear H2 H5.
+
+  remember (UnWrapEnv e_mek n_with_id (add_leaked e_mek env5)) as p eqn:H5.
+  destruct p as [uout env6].
+  assert (H12: USomeEquals uout (content (mek_with_id w))).
+  {
+    unfold UnWrapEnv in H5.
+    simpl in H5.
+    rewrite H11 in H5.
+    rewrite H8 in H5.
+    specialize (asymEnDe DK (Conc {| mek := content mek; nonce := content n_with_id |})) as HA.
+    rewrite HA in H5.
+    specialize (serialCorrect {| mek := content mek; nonce := content n_with_id |}) as HB.
+    rewrite <- HB in H5.
+    rewrite H10 in H5.
+    simpl in H5.
+    unfold beq_text in H5.
+    specialize (beq_id (content (nonce_with_id w))) as HC.
+    rewrite HC in H5.
+    injection H5 as H5A H5B.
+    unfold USomeEquals.
+    rewrite H5A.
+    simpl.
+    rewrite H0.
+    auto.
+  }
+  destruct uout eqn:H3.
+  2: {
+    contradiction.
+  }
+  simpl in H12.
+  clear H3 H5.
+
+  simpl.
+  auto.
+Qed.
+
 
 (*
   TODO: Analyze how much infomation an attacker can get
